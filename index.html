@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SBC - Sniper Business Center</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --blue: #1d4ed8;
+      --blue-dark: #1e40af;
+      --blue-soft: #eff6ff;
+      --green: #16a34a;
+      --green-soft: #dcfce7;
+      --amber: #d97706;
+      --amber-soft: #fef3c7;
+      --rose: #e11d48;
+      --rose-soft: #ffe4e6;
+      --purple: #7c3aed;
+      --purple-soft: #f3e8ff;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--ink); min-height: 100vh; padding-bottom: 90px; }
+
+    /* Top Header */
+    .topbar {
+      position: sticky; top: 0; z-index: 40;
+      background: #ffffff; border-bottom: 1px solid var(--line);
+      height: 60px; padding: 0 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 12px;
+      border: 1px solid var(--line); background: #fff;
+      display: grid; place-items: center; cursor: pointer;
+      color: var(--ink); font-size: 18px;
+    }
+    .icon-btn:active { transform: scale(0.96); }
+    .brand-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 800; font-size: 15px; letter-spacing: -0.02em;
+      cursor: pointer;
+    }
+    .brand-badge {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      color: #fff; font-size: 11px; font-weight: 900;
+      padding: 5px 8px; border-radius: 9px;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 8px; position: relative; }
+    .notif-dot {
+      position: absolute; top: 6px; right: 6px;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--rose);
+    }
+
+    /* Container */
+    .container { max-width: 520px; margin: 0 auto; padding: 14px; }
+
+    /* Back button on Abonnement */
+    .sub-top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .back-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--green); color: #fff; font-weight: 700; font-size: 13px;
+      border: none; border-radius: 999px; padding: 8px 14px; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+    }
+    .user-chip {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      background: #fff; border: 1px solid var(--line);
+      padding: 6px 10px; border-radius: 999px;
+    }
+
+    /* Hero */
+    .hero-card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 18px 16px;
+      box-shadow: var(--shadow); margin-bottom: 14px;
+    }
+    .hero-title {
+      font-size: 21px; line-height: 1.25; font-weight: 850;
+      color: var(--ink); margin-bottom: 8px;
+    }
+    .hero-sub {
+      font-size: 13.5px; line-height: 1.5; color: var(--muted);
+    }
+
+    /* Currency Toggle */
+    .currency-toggle {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      background: #e2e8f0; padding: 4px; border-radius: 14px;
+      margin-bottom: 14px;
+    }
+    .currency-btn {
+      border: none; border-radius: 11px; padding: 10px 12px;
+      font-weight: 700; font-size: 13px; cursor: pointer;
+      background: transparent; color: var(--muted); transition: 0.2s;
+    }
+    .currency-btn.active {
+      background: #ffffff; color: var(--ink);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    /* Pack Cards */
+    .pack-card {
+      background: var(--card); border: 1.5px solid var(--line);
+      border-radius: var(--radius); padding: 16px;
+      box-shadow: var(--shadow); margin-bottom: 14px;
+      position: relative;
+    }
+    .pack-card.featured { border-color: #3b82f6; }
+    .pack-card.vip { border-color: #8b5cf6; }
+    .pack-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .pack-name { font-size: 17px; font-weight: 800; }
+    .pack-tag {
+      font-size: 11px; font-weight: 700; padding: 4px 10px;
+      border-radius: 999px; background: var(--blue-soft); color: var(--blue);
+    }
+    .pack-tag.vip { background: var(--purple-soft); color: var(--purple); }
+    .pack-price {
+      font-size: 24px; font-weight: 900; color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .pack-rate {
+      font-size: 13px; font-weight: 700; color: var(--green);
+      margin-bottom: 12px;
+    }
+    .pack-features {
+      list-style: none; display: flex; flex-direction: column; gap: 7px;
+      margin-bottom: 14px; font-size: 13px; color: #334155;
+    }
+    .pack-features li::before {
+      content: "✓ "; color: var(--green); font-weight: 800;
+    }
+    .btn-primary {
+      width: 100%; border: none; border-radius: 12px;
+      padding: 12px 14px; font-weight: 800; font-size: 14px;
+      background: var(--blue); color: #fff; cursor: pointer;
+    }
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-secondary {
+      width: 100%; border: 1px solid var(--line); border-radius: 12px;
+      padding: 11px 14px; font-weight: 700; font-size: 13.5px;
+      background: #fff; color: var(--ink); cursor: pointer;
+    }
+    .btn-green {
+      width: 100%; border: none; border-radius: 12px;
+      padding: 12px 14px; font-weight: 800; font-size: 14px;
+      background: var(--green); color: #fff; cursor: pointer;
+    }
+
+    /* Ad card */
+    .ad-banner {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #fff; border-radius: var(--radius); padding: 16px;
+      margin-bottom: 16px; box-shadow: var(--shadow);
+    }
+    .ad-banner h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+    .ad-banner p { font-size: 13px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.45; }
+
+    /* Member Options */
+    .section-heading {
+      font-size: 16px; font-weight: 850; margin: 16px 0 6px;
+    }
+    .section-sub {
+      font-size: 12.5px; color: var(--muted); margin-bottom: 12px;
+    }
+    .option-card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .option-top {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 6px;
+    }
+    .option-title { font-weight: 800; font-size: 14.5px; }
+    .option-price { font-weight: 800; font-size: 13.5px; color: var(--blue); }
+    .option-desc { font-size: 12.5px; color: var(--muted); margin-bottom: 10px; line-height: 1.4; }
+    .locked-note {
+      font-size: 12px; color: var(--amber); background: var(--amber-soft);
+      padding: 8px 10px; border-radius: 10px; font-weight: 600;
+    }
+
+    /* Generic Page Cards */
+    .page-card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .kpi-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+    }
+    .kpi-box {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 12px; box-shadow: var(--shadow);
+    }
+    .kpi-label { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+    .kpi-val { font-size: 18px; font-weight: 900; margin-top: 4px; }
+
+    /* Drawer */
+    .drawer-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+      z-index: 60; display: none;
+    }
+    .drawer-backdrop.open { display: block; }
+    .drawer {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 82%; max-width: 340px; background: #ffffff;
+      z-index: 70; overflow-y: auto; padding: 16px 14px 36px;
+      transform: translateX(-100%); transition: transform 0.24s ease;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .drawer-title { font-size: 18px; font-weight: 900; }
+    .drawer-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .install-card {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      background: #f8fafc; border: 1px solid var(--line);
+      border-radius: 14px; padding: 12px; margin-bottom: 14px;
+    }
+    .install-left { display: flex; align-items: center; gap: 10px; }
+    .install-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--blue-soft); color: var(--blue);
+      display: grid; place-items: center; font-weight: 800;
+    }
+    .install-btn {
+      background: var(--blue); color: #fff; border: none;
+      border-radius: 10px; padding: 8px 14px; font-weight: 700;
+      font-size: 12.5px; cursor: pointer;
+    }
+
+    .nav-item {
+      width: 100%; border: none; background: transparent;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 10px; border-radius: 12px; cursor: pointer;
+      color: var(--ink); font-size: 14px; font-weight: 600; text-align: left;
+      margin-bottom: 2px;
+    }
+    .nav-item:hover { background: #f8fafc; }
+    .nav-item.active { background: var(--blue-soft); color: var(--blue); font-weight: 800; }
+    .nav-item-left { display: flex; align-items: center; gap: 11px; }
+    .nav-badge-icon {
+      width: 34px; height: 34px; border-radius: 10px;
+      display: grid; place-items: center; font-size: 15px;
+      background: #f1f5f9;
+    }
+    .nav-group-label {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+      color: #64748b; text-transform: uppercase;
+      margin: 14px 10px 6px;
+    }
+    .active-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--blue);
+    }
+
+    /* Floating Help Button */
+    .help-fab {
+      position: fixed; right: 16px; bottom: 18px; z-index: 45;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--blue); color: #fff; border: none;
+      font-size: 20px; font-weight: 900; cursor: pointer;
+      box-shadow: 0 8px 20px rgba(29, 78, 216, 0.35);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+      z-index: 80; display: none; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      background: #fff; border-radius: 18px; width: 100%; max-width: 440px;
+      padding: 18px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      max-height: 88vh; overflow-y: auto;
+    }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; color: #334155; }
+    .field input, .field select, .field textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 11px;
+      padding: 10px 12px; font-size: 13.5px; color: var(--ink); background: #fff;
+    }
+    .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+    .toast {
+      position: fixed; bottom: 78px; left: 50%; transform: translateX(-50%);
+      background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 999px;
+      font-size: 12.5px; font-weight: 600; z-index: 100; display: none;
+      white-space: nowrap;
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="icon-btn" id="openDrawerBtn" aria-label="Menu">☰</button>
+      <div class="brand-logo" onclick="navigateTo('abonnement')">
+        <span class="brand-badge">SBC</span>
+        <span>Sniper Business Center</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="notifBtn" aria-label="Notifications">
+        🔔
+        <span class="notif-dot"></span>
+      </button>
+      <button class="icon-btn" id="profileTopBtn" aria-label="Profil">👤</button>
+    </div>
+  </header>
+
+  <!-- Drawer Navigation -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title">Tous les services</div>
+        <div class="drawer-sub">Naviguez où vous voulez</div>
+      </div>
+      <button class="icon-btn" id="closeDrawerBtn" aria-label="Fermer">✕</button>
+    </div>
+
+    <!-- Installer l'application -->
+    <div class="install-card">
+      <div class="install-left">
+        <div class="install-icon">⬇</div>
+        <div>
+          <div style="font-size:13px;font-weight:800;">Installer l'application</div>
+          <div style="font-size:11px;color:var(--muted);">Accès rapide mobile</div>
+        </div>
+      </div>
+      <button class="install-btn" id="installAppBtn">Installer</button>
+    </div>
+
+    <!-- Accueil -->
+    <button class="nav-item" data-page="accueil">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#eff6ff;color:#1d4ed8;">⌂</span>
+        <span>Accueil</span>
+      </span>
+      <span style="color:#94a3b8;">›</span>
+    </button>
+
+    <!-- GAGNER -->
+    <div class="nav-group-label">GAGNER</div>
+    <button class="nav-item" data-page="classement">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#fef3c7;color:#d97706;">🏆</span>
+        <span>Classement</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="formations">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#dcfce7;color:#16a34a;">📖</span>
+        <span>Formations</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="filleuls">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#eff6ff;color:#2563eb;">👥</span>
+        <span>Mes filleuls</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="partenaire">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#ffedd5;color:#ea580c;">🤝</span>
+        <span>Espace partenaire</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="ads-network">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#e0e7ff;color:#4f46e5;">📣</span>
+        <span>Ads Network</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="evenements">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#e0f2fe;color:#0284c7;">🎟</span>
+        <span>Événements</span>
+      </span>
+    </button>
+
+    <!-- BOUTIQUE -->
+    <div class="nav-group-label">BOUTIQUE</div>
+    <button class="nav-item" data-page="shop">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#fef3c7;color:#b45309;">🛍</span>
+        <span>SBC Shop</span>
+      </span>
+    </button>
+
+    <!-- COMMUNAUTÉ -->
+    <div class="nav-group-label">COMMUNAUTÉ</div>
+    <button class="nav-item" data-page="statut">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#e0f2fe;color:#0369a1;">◎</span>
+        <span>SBC Statut</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="love">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#ffe4e6;color:#e11d48;">♡</span>
+        <span>SBC Love</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="messages">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#e0e7ff;color:#3730a3;">💬</span>
+        <span>Messages</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="contacts">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#dcfce7;color:#15803d;">📞</span>
+        <span>Contacts</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="relance">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#fef3c7;color:#c2410c;">✉</span>
+        <span>Relance</span>
+      </span>
+    </button>
+
+    <!-- COMPTE -->
+    <div class="nav-group-label">COMPTE</div>
+    <button class="nav-item" data-page="portefeuille">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#dcfce7;color:#16a34a;">👛</span>
+        <span>Portefeuille</span>
+      </span>
+    </button>
+    <button class="nav-item" data-page="solde-activation">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#fef3c7;color:#d97706;">🪙</span>
+        <span>Solde d'activation</span>
+      </span>
+    </button>
+    <button class="nav-item active" data-page="abonnement">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#dbeafe;color:#1d4ed8;">💳</span>
+        <span>Abonnement</span>
+      </span>
+      <span class="active-dot"></span>
+    </button>
+    <button class="nav-item" data-page="profil">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#f1f5f9;color:#334155;">👤</span>
+        <span>Mon profil</span>
+      </span>
+    </button>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="container" id="appRoot"></main>
+
+  <!-- Floating Help Button -->
+  <button class="help-fab" id="helpFab" title="Guide interactif">?</button>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Auth / Pack / Tutorial Modal -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal-card" id="modalContent"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      addDoc,
+      collection,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBK-HfC7k_3io0kn8oHwQ1g6MqEueHb4-g",
+      authDomain: "connect-pro-center.firebaseapp.com",
+      projectId: "connect-pro-center",
+      storageBucket: "connect-pro-center.firebasestorage.app",
+      messagingSenderId: "362109612985",
+      appId: "1:362109612985:web:a73fd0ad7215b83b107c68"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const PACKS = [
+      {
+        id: "classique",
+        name: "Pack Classique",
+        tag: "Débutant",
+        fcfa: 2150,
+        usd: 5.04,
+        rateText: "Jusqu'à 1,75 FCFA / vue statut",
+        features: [
+          "Accès à SBC Ads Network",
+          "Diffusion de campagnes statuts WhatsApp",
+          "Commission parrainage directe",
+          "Pack valable à vie"
+        ]
+      },
+      {
+        id: "cible",
+        name: "Pack Ciblé",
+        tag: "Populaire",
+        featured: true,
+        fcfa: 5300,
+        usd: 12.09,
+        rateText: "Jusqu'à 2,00 FCFA / vue statut",
+        features: [
+          "Taux boosté sur statuts ciblés",
+          "Priorité sur les campagnes annonceurs",
+          "Accès formations & outils de relance",
+          "Pack valable à vie"
+        ]
+      },
+      {
+        id: "winner",
+        name: "Pack Winner",
+        tag: "VIP Max",
+        vip: true,
+        fcfa: 15900,
+        usd: 37.10,
+        rateText: "Jusqu'à 2,00 FCFA / vue statut + Bonus VIP",
+        features: [
+          "Volume maximal de campagnes statuts",
+          "Accès complet SBC Statut, Love & Shop",
+          "Bonus parrainage & accompagnement VIP",
+          "Pack valable à vie"
+        ]
+      }
+    ];
+
+    const state = {
+      page: "abonnement",
+      currency: "FCFA",
+      currentUser: null,
+      profile: null,
+      deferredPrompt: null
+    };
+
+    const appRoot = document.getElementById("appRoot");
+    const drawer = document.getElementById("drawer");
+    const drawerBackdrop = document.getElementById("drawerBackdrop");
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const modalContent = document.getElementById("modalContent");
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+    }
+
+    function formatPrice(pack) {
+      return state.currency === "FCFA"
+        ? `${pack.fcfa.toLocaleString("fr-FR")} FCFA`
+        : `${pack.usd.toFixed(2).replace(".", ",")} $`;
+    }
+
+    function openDrawer() {
+      drawer.classList.add("open");
+      drawerBackdrop.classList.add("open");
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove("open");
+      drawerBackdrop.classList.remove("open");
+    }
+
+    function openModal(html) {
+      modalContent.innerHTML = html;
+      modalBackdrop.classList.add("open");
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.remove("open");
+    }
+
+    document.getElementById("openDrawerBtn").addEventListener("click", openDrawer);
+    document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
+    drawerBackdrop.addEventListener("click", closeDrawer);
+    modalBackdrop.addEventListener("click", (e) => {
+      if (e.target === modalBackdrop) closeModal();
+    });
+
+    document.querySelectorAll(".nav-item[data-page]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        navigateTo(btn.dataset.page);
+        closeDrawer();
+      });
+    });
+
+    document.getElementById("profileTopBtn").addEventListener("click", () => {
+      if (state.currentUser) {
+        navigateTo("profil");
+      } else {
+        openAuthModal("login");
+      }
+    });
+
+    document.getElementById("notifBtn").addEventListener("click", () => {
+      openModal(`
+        <h3 style="font-size:17px;font-weight:850;margin-bottom:10px;">Notifications SBC</h3>
+        <div style="font-size:13px;color:#334155;display:flex;flex-direction:column;gap:10px;">
+          <div style="background:#eff6ff;padding:10px;border-radius:12px;">
+            <strong>SBC Ads Network :</strong> Nouvelles campagnes statuts WhatsApp disponibles après activation d'un pack.
+          </div>
+          <div style="background:#f8fafc;padding:10px;border-radius:12px;">
+            <strong>Parrainage :</strong> Partagez votre code personnel pour gagner des commissions sur chaque pack activé.
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" id="closeNotifBtn">Fermer</button>
+        </div>
+      `);
+      document.getElementById("closeNotifBtn").addEventListener("click", closeModal);
+    });
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      state.deferredPrompt = e;
+    });
+
+    document.getElementById("installAppBtn").addEventListener("click", async () => {
+      if (state.deferredPrompt) {
+        state.deferredPrompt.prompt();
+        await state.deferredPrompt.userChoice;
+        state.deferredPrompt = null;
+      } else {
+        showToast("Menu navigateur (⋮) → Ajouter à l'écran d'accueil");
+      }
+    });
+
+    function navigateTo(page) {
+      state.page = page;
+      document.querySelectorAll(".nav-item[data-page]").forEach(item => {
+        const isAct = item.dataset.page === page;
+        item.classList.toggle("active", isAct);
+        const existingDot = item.querySelector(".active-dot");
+        if (existingDot) existingDot.remove();
+        if (isAct) {
+          const dot = document.createElement("span");
+          dot.className = "active-dot";
+          item.appendChild(dot);
+        }
+      });
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    window.navigateTo = navigateTo;
+
+    function generateRefCode(name = "SBC") {
+      const clean = name.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4) || "SBC";
+      const num = Math.floor(1000 + Math.random() * 9000);
+      return `${clean}${num}`;
+    }
+
+    async function ensureUserProfile(user, extra = {}) {
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        const data = {
+          uid: user.uid,
+          email: user.email || "",
+          fullName: extra.fullName || user.email?.split("@")[0] || "Membre SBC",
+          whatsapp: extra.whatsapp || "",
+          country: extra.country || "Bénin",
+          refCode: generateRefCode(extra.fullName || "SBC"),
+          referredBy: extra.referredBy || "",
+          pack: null,
+          walletBalance: 0,
+          activationBalance: 0,
+          statusViews: 0,
+          createdAt: serverTimestamp()
+        };
+        await setDoc(ref, data);
+        state.profile = data;
+      } else {
+        state.profile = { id: snap.id, ...snap.data() };
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      state.currentUser = user;
+      if (user) {
+        try {
+          await ensureUserProfile(user);
+        } catch (err) {
+          state.profile = {
+            uid: user.uid,
+            email: user.email,
+            fullName: user.email?.split("@")[0] || "Membre SBC",
+            pack: null,
+            walletBalance: 0,
+            activationBalance: 0
+          };
+        }
+      } else {
+        state.profile = null;
+      }
+      render();
+    });
+
+    function openAuthModal(mode = "register") {
+      const isReg = mode === "register";
+      openModal(`
+        <h3 style="font-size:18px;font-weight:850;margin-bottom:4px;">
+          ${isReg ? "Créer un compte SBC" : "Connexion à SBC"}
+        </h3>
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px;">
+          ${isReg ? "Inscription réelle avec Firebase Authentication & Firestore." : "Connectez-vous à votre compte Sniper Business Center."}
+        </p>
+        <form id="authForm">
+          ${isReg ? `
+            <div class="field">
+              <label>Nom complet</label>
+              <input type="text" id="authName" required placeholder="Ex: Koffi Mensah" />
+            </div>
+            <div class="field">
+              <label>Numéro WhatsApp</label>
+              <input type="tel" id="authWhatsapp" required placeholder="+229 01 60 00 00 00" />
+            </div>
+            <div class="field">
+              <label>Pays</label>
+              <select id="authCountry">
+                <option value="Bénin">Bénin</option>
+                <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                <option value="Togo">Togo</option>
+                <option value="Sénégal">Sénégal</option>
+                <option value="Cameroun">Cameroun</option>
+                <option value="Burkina Faso">Burkina Faso</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </div>
+          ` : ""}
+          <div class="field">
+            <label>Adresse e-mail</label>
+            <input type="email" id="authEmail" required placeholder="exemple@email.com" />
+          </div>
+          <div class="field">
+            <label>Mot de passe (6 caractères min.)</label>
+            <input type="password" id="authPass" required minlength="6" placeholder="••••••••" />
+          </div>
+          ${isReg ? `
+            <div class="field">
+              <label>Code parrain (optionnel)</label>
+              <input type="text" id="authRef" placeholder="Ex: SBC1234" />
+            </div>
+          ` : ""}
+          <button type="submit" class="btn-primary" id="authSubmitBtn">
+            ${isReg ? "S'inscrire maintenant" : "Se connecter"}
+          </button>
+        </form>
+        <div style="margin-top:12px;text-align:center;font-size:12.5px;color:var(--muted);">
+          ${isReg
+            ? `Déjà inscrit ? <a href="#" id="switchAuthMode" style="color:var(--blue);font-weight:700;">Se connecter</a>`
+            : `Pas encore de compte ? <a href="#" id="switchAuthMode" style="color:var(--blue);font-weight:700;">Créer un compte</a>`
+          }
+        </div>
+      `);
+
+      document.getElementById("switchAuthMode").addEventListener("click", (e) => {
+        e.preventDefault();
+        openAuthModal(isReg ? "login" : "register");
+      });
+
+      document.getElementById("authForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("authSubmitBtn");
+        btn.disabled = true;
+        btn.textContent = "Traitement...";
+        const email = document.getElementById("authEmail").value.trim();
+        const pass = document.getElementById("authPass").value;
+        try {
+          if (isReg) {
+            const fullName = document.getElementById("authName").value.trim();
+            const whatsapp = document.getElementById("authWhatsapp").value.trim();
+            const country = document.getElementById("authCountry").value;
+            const referredBy = document.getElementById("authRef").value.trim().toUpperCase();
+            const cred = await createUserWithEmailAndPassword(auth, email, pass);
+            await ensureUserProfile(cred.user, { fullName, whatsapp, country, referredBy });
+            showToast("Compte créé avec succès !");
+          } else {
+            await signInWithEmailAndPassword(auth, email, pass);
+            showToast("Connexion réussie !");
+          }
+          closeModal();
+        } catch (err) {
+          showToast(err.message || "Erreur d'authentification");
+          btn.disabled = false;
+          btn.textContent = isReg ? "S'inscrire maintenant" : "Se connecter";
+        }
+      });
+    }
+
+    function openPackModal(pack) {
+      if (!state.currentUser) {
+        showToast("Connectez-vous ou inscrivez-vous pour choisir un pack");
+        openAuthModal("register");
+        return;
+      }
+      openModal(`
+        <h3 style="font-size:18px;font-weight:850;margin-bottom:4px;">${pack.name}</h3>
+        <div style="font-size:20px;font-weight:900;color:var(--blue);margin-bottom:10px;">
+          ${formatPrice(pack)} • À vie
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.45;">
+          Soumettez votre référence de paiement (${state.currency === "FCFA" ? "Mobile Money" : "Crypto USDT"}) pour enregistrer votre demande de souscription.
+        </p>
+        <form id="packSubmitForm">
+          <div class="field">
+            <label>Moyen de paiement</label>
+            <select id="payMethod">
+              ${state.currency === "FCFA"
+                ? `<option value="MTN MoMo">MTN MoMo</option><option value="Moov Money">Moov Money</option><option value="Wave">Wave</option><option value="Orange Money">Orange Money</option>`
+                : `<option value="USDT (TRC20)">USDT (TRC20)</option><option value="USDT (BEP20)">USDT (BEP20)</option>`
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label>Référence / ID de transaction</label>
+            <input type="text" id="payRef" required placeholder="Ex: TX-9845120" />
+          </div>
+          <button type="submit" class="btn-green" id="confirmPackBtn">Confirmer la demande</button>
+        </form>
+      `);
+
+      document.getElementById("packSubmitForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("confirmPackBtn");
+        btn.disabled = true;
+        btn.textContent = "Envoi...";
+        try {
+          await addDoc(collection(db, "transactions"), {
+            userId: state.currentUser.uid,
+            email: state.currentUser.email,
+            packId: pack.id,
+            packName: pack.name,
+            currency: state.currency,
+            amount: state.currency === "FCFA" ? pack.fcfa : pack.usd,
+            method: document.getElementById("payMethod").value,
+            reference: document.getElementById("payRef").value.trim(),
+            status: "pending",
+            createdAt: serverTimestamp()
+          });
+          closeModal();
+          showToast("Demande de pack enregistrée !");
+        } catch (err) {
+          showToast("Erreur lors de l'enregistrement");
+          btn.disabled = false;
+          btn.textContent = "Confirmer la demande";
+        }
+      });
+    }
+
+    const TUTORIAL_STEPS = [
+      { title: "Bienvenue sur SBC", text: "Publiez des campagnes annonceurs en statut WhatsApp et gagnez à chaque vue qualifiée." },
+      { title: "Mobile Money ou Crypto", text: "Basculez facilement entre FCFA (Mobile Money) et USD (Crypto) selon votre préférence." },
+      { title: "Choisissez votre Pack à vie", text: "Classique, Ciblé ou Winner : chaque pack débloque l'accès à SBC Ads Network." },
+      { title: "Options réservées aux membres", text: "Activez un pack pour débloquer l'Espace Pro et la Mise en avant de votre profil." },
+      { title: "Parrainage & Équipe", text: "Invitez vos filleuls via votre lien unique et suivez vos gains dans Mes filleuls et Portefeuille." },
+      { title: "Navigation complète", text: "Ouvrez le menu ☰ pour accéder à Formations, SBC Shop, SBC Statut, SBC Love et Messages." }
+    ];
+
+    function openTutorial(stepIndex = 0) {
+      const s = TUTORIAL_STEPS[stepIndex];
+      openModal(`
+        <div style="font-size:11.5px;font-weight:800;color:var(--blue);margin-bottom:6px;">
+          ÉTAPE ${stepIndex + 1} / ${TUTORIAL_STEPS.length}
+        </div>
+        <h3 style="font-size:18px;font-weight:850;margin-bottom:8px;">${s.title}</h3>
+        <p style="font-size:13.5px;color:#334155;line-height:1.5;margin-bottom:16px;">${s.text}</p>
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <button class="btn-secondary" id="tutSkipBtn">Passer</button>
+          <div style="display:flex;gap:8px;">
+            ${stepIndex > 0 ? `<button class="btn-secondary" id="tutPrevBtn">Précédent</button>` : ""}
+            <button class="btn-primary" id="tutNextBtn">
+              ${stepIndex < TUTORIAL_STEPS.length - 1 ? "Suivant" : "Terminer"}
+            </button>
+          </div>
+        </div>
+      `);
+      document.getElementById("tutSkipBtn").addEventListener("click", closeModal);
+      const prev = document.getElementById("tutPrevBtn");
+      if (prev) prev.addEventListener("click", () => openTutorial(stepIndex - 1));
+      document.getElementById("tutNextBtn").addEventListener("click", () => {
+        if (stepIndex < TUTORIAL_STEPS.length - 1) openTutorial(stepIndex + 1);
+        else closeModal();
+      });
+    }
+    document.getElementById("helpFab").addEventListener("click", () => openTutorial(0));
+
+    function renderAbonnement() {
+      const hasPack = Boolean(state.profile && state.profile.pack);
+      const packsHtml = PACKS.map(p => `
+        <article class="pack-card ${p.featured ? "featured" : ""} ${p.vip ? "vip" : ""}">
+          <div class="pack-header">
+            <span class="pack-name">${p.name}</span>
+            <span class="pack-tag ${p.vip ? "vip" : ""}">${p.tag}</span>
+          </div>
+          <div class="pack-price">${formatPrice(p)}</div>
+          <div class="pack-rate">${p.rateText}</div>
+          <ul class="pack-features">
+            ${p.features.map(f => `<li>${f}</li>`).join("")}
+          </ul>
+          <button class="btn-primary pack-select-btn" data-pack="${p.id}">
+            Choisir ${p.name}
+          </button>
+        </article>
+      `).join("");
+
+      return `
+        <div class="sub-top-bar">
+          <button class="back-pill" onclick="navigateTo('accueil')">← Retour</button>
+          <span class="user-chip">
+            ${state.currentUser ? (state.profile?.fullName || state.currentUser.email) : "Invité"}
+          </span>
+        </div>
+
+        <section class="hero-card">
+          <h1 class="hero-title">Payez une fois. Vos statuts WhatsApp remboursent le reste.</h1>
+          <p class="hero-sub">
+            Chaque pack est à vie et vous ouvre SBC Ads Network : publiez les pubs des annonceurs en statut, et chaque vue vous rapporte de l'argent.
+          </p>
+        </section>
+
+        <div class="currency-toggle">
+          <button class="currency-btn ${state.currency === "FCFA" ? "active" : ""}" data-curr="FCFA">
+            Mobile Money (FCFA)
+          </button>
+          <button class="currency-btn ${state.currency === "USD" ? "active" : ""}" data-curr="USD">
+            Crypto (USD)
+          </button>
+        </div>
+
+        ${packsHtml}
+
+        <section class="ad-banner">
+          <h3>Vous voulez seulement faire de la publicité ?</h3>
+          <p>
+            Diffusez vos liens, produits ou services auprès de la communauté SBC et des statuts actifs sans activer un pack créateur.
+          </p>
+          <button class="btn-green" id="advertiserBtn">Lancer une campagne annonceur</button>
+        </section>
+
+        <h2 class="section-heading">Options pour les membres</h2>
+        <p class="section-sub">Disponibles après l'activation d'un pack membre.</p>
+
+        <div class="option-card">
+          <div class="option-top">
+            <span class="option-title">Espace Pro — Mensuel</span>
+            <span class="option-price">${state.currency === "FCFA" ? "1 500 FCFA / mois" : "3,50 $ / mois"}</span>
+          </div>
+          <p class="option-desc">Statistiques détaillées, outils d'automatisation et accès prioritaire aux campagnes.</p>
+          ${hasPack
+            ? `<button class="btn-secondary" onclick="showToast('Option Espace Pro Mensuel sélectionnée')">Activer Espace Pro Mensuel</button>`
+            : `<div class="locked-note">🔒 Activez d'abord un pack pour débloquer cette option.</div>`
+          }
+        </div>
+
+        <div class="option-card">
+          <div class="option-top">
+            <span class="option-title">Espace Pro — Annuel</span>
+            <span class="option-price">${state.currency === "FCFA" ? "12 000 FCFA / an" : "28,00 $ / an"}</span>
+          </div>
+          <p class="option-desc">Économisez sur l'année avec l'accès complet aux outils Pro et aux avantages membres.</p>
+          ${hasPack
+            ? `<button class="btn-secondary" onclick="showToast('Option Espace Pro Annuel sélectionnée')">Activer Espace Pro Annuel</button>`
+            : `<div class="locked-note">🔒 Activez d'abord un pack pour débloquer cette option.</div>`
+          }
+        </div>
+
+        <div class="option-card">
+          <div class="option-top">
+            <span class="option-title">Mise en avant</span>
+            <span class="option-price">${state.currency === "FCFA" ? "1 000 FCFA" : "2,50 $"}</span>
+          </div>
+          <p class="option-desc">Boostez votre visibilité dans SBC Statut, SBC Love et le classement communautaire.</p>
+          ${hasPack
+            ? `<button class="btn-secondary" onclick="showToast('Option Mise en avant sélectionnée')">Activer Mise en avant</button>`
+            : `<div class="locked-note">🔒 Activez d'abord un pack pour débloquer cette option.</div>`
+          }
+        </div>
+      `;
+    }
+
+    function renderSubPage(title, subtitle, bodyHtml) {
+      return `
+        <div class="sub-top-bar">
+          <button class="back-pill" onclick="navigateTo('abonnement')">← Abonnement</button>
+          <span class="user-chip">${state.currentUser ? "Connecté" : "Mode découverte"}</span>
+        </div>
+        <div class="hero-card">
+          <h1 class="hero-title">${title}</h1>
+          <p class="hero-sub">${subtitle}</p>
+        </div>
+        ${bodyHtml}
+      `;
+    }
+
+    function render() {
+      const p = state.profile || {};
+      let html = "";
+
+      switch (state.page) {
+        case "abonnement":
+          html = renderAbonnement();
+          break;
+        case "accueil":
+          html = renderSubPage(
+            "Accueil — Sniper Business Center",
+            "Votre centre d'activités : statuts rémunérés, parrainage, boutique et communauté.",
+            `
+            <div class="kpi-grid">
+              <div class="kpi-box"><div class="kpi-label">Solde Portefeuille</div><div class="kpi-val">${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</div></div>
+              <div class="kpi-box"><div class="kpi-label">Solde Activation</div><div class="kpi-val">${(p.activationBalance || 0).toLocaleString("fr-FR")} FCFA</div></div>
+            </div>
+            <div class="page-card">
+              <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">Démarrage rapide</h3>
+              <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+                ${state.currentUser
+                  ? "Choisissez un pack à vie dans Abonnement pour activer SBC Ads Network."
+                  : "Créez votre compte ou connectez-vous pour enregistrer votre progression."}
+              </p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn-primary" style="flex:1;" onclick="navigateTo('abonnement')">Voir les packs</button>
+                ${!state.currentUser ? `<button class="btn-secondary" style="flex:1;" id="homeAuthBtn">Connexion / Inscription</button>` : ""}
+              </div>
+            </div>
+            `
+          );
+          break;
+        case "classement":
+          html = renderSubPage(
+            "Classement",
+            "Top membres et ambassadeurs actifs sur SBC.",
+            `
+            <div class="page-card">
+              <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);">
+                <strong>🥇 1. Mensah K.</strong><span style="color:var(--green);font-weight:800;">14 200 vues</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);">
+                <strong>🥈 2. Aïcha D.</strong><span style="color:var(--green);font-weight:800;">11 850 vues</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:10px 0;">
+                <strong>🥉 3. Yvan T.</strong><span style="color:var(--green);font-weight:800;">9 420 vues</span>
+              </div>
+            </div>
+            `
+          );
+          break;
+        case "formations":
+          html = renderSubPage(
+            "Formations",
+            "Modules pratiques pour optimiser vos vues statuts et votre audience WhatsApp.",
+            `
+            <div class="page-card"><strong>Module 1 :</strong> Structurer un statut WhatsApp à fort taux de lecture.</div>
+            <div class="page-card"><strong>Module 2 :</strong> Développer ses contacts ciblés et sa communauté.</div>
+            <div class="page-card"><strong>Module 3 :</strong> Stratégie de parrainage et suivi des performances.</div>
+            `
+          );
+          break;
+        case "filleuls":
+          html = renderSubPage(
+            "Mes filleuls",
+            "Partagez votre code de parrainage et suivez votre réseau.",
+            `
+            <div class="page-card">
+              <div class="kpi-label">Votre code parrain</div>
+              <div style="font-size:20px;font-weight:900;color:var(--blue);margin:6px 0;">${p.refCode || "SBC-INVITE"}</div>
+              <button class="btn-primary" onclick="navigator.clipboard?.writeText('${p.refCode || "SBC-INVITE"}');showToast('Code copié !')">Copier mon code</button>
+            </div>
+            `
+          );
+          break;
+        case "partenaire":
+          html = renderSubPage(
+            "Espace partenaire",
+            "Programme partenaires & diffuseurs de campagnes SBC.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Collaborez avec SBC pour relayer des offres et campagnes auprès de votre audience.</p></div>`
+          );
+          break;
+        case "ads-network":
+          html = renderSubPage(
+            "Ads Network",
+            "Publiez les campagnes des annonceurs en statut et suivez vos vues.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Activez un pack dans <strong>Abonnement</strong> pour accéder au catalogue complet des campagnes rémunérées par vue.</p></div>`
+          );
+          break;
+        case "evenements":
+          html = renderSubPage(
+            "Événements",
+            "Sessions live, challenges communautaires et rencontres SBC.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Prochain challenge statuts & formation communautaire ouvert aux membres SBC.</p></div>`
+          );
+          break;
+        case "shop":
+          html = renderSubPage(
+            "SBC Shop",
+            "Boutique et services digitaux de la communauté SBC.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Packs numériques, outils créateurs et offres partenaires disponibles sur SBC Shop.</p></div>`
+          );
+          break;
+        case "statut":
+          html = renderSubPage(
+            "SBC Statut",
+            "Espace dédié au partage et à la visibilité des statuts.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Partagez vos visuels et suivez l'engagement de la communauté.</p></div>`
+          );
+          break;
+        case "love":
+          html = renderSubPage(
+            "SBC Love",
+            "Rencontres, échanges et connexions communautaires SBC.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Découvrez les profils actifs et initiez des échanges respectueux au sein de la communauté.</p></div>`
+          );
+          break;
+        case "messages":
+          html = renderSubPage(
+            "Messages",
+            "Messagerie et discussions de la plateforme.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Aucune nouvelle conversation pour le moment. Connectez-vous pour échanger avec vos contacts.</p></div>`
+          );
+          break;
+        case "contacts":
+          html = renderSubPage(
+            "Contacts",
+            "Répertoire et réseau de contacts SBC.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Développez votre carnet de contacts pour augmenter la portée de vos publications.</p></div>`
+          );
+          break;
+        case "relance":
+          html = renderSubPage(
+            "Relance",
+            "Outils de suivi et relance de vos prospects et filleuls.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Préparez vos messages de suivi pour accompagner vos filleuls et partenaires.</p></div>`
+          );
+          break;
+        case "portefeuille":
+          html = renderSubPage(
+            "Portefeuille",
+            "Consultez vos soldes et l'historique de vos opérations.",
+            `
+            <div class="kpi-grid">
+              <div class="kpi-box"><div class="kpi-label">Solde disponible</div><div class="kpi-val">${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</div></div>
+              <div class="kpi-box"><div class="kpi-label">Pack actif</div><div class="kpi-val" style="font-size:14px;">${p.pack || "Aucun"}</div></div>
+            </div>
+            `
+          );
+          break;
+        case "solde-activation":
+          html = renderSubPage(
+            "Solde d'activation",
+            "Solde dédié aux activations de packs et services internes.",
+            `
+            <div class="page-card">
+              <div class="kpi-label">Solde d'activation actuel</div>
+              <div class="kpi-val" style="margin-top:6px;">${(p.activationBalance || 0).toLocaleString("fr-FR")} FCFA</div>
+            </div>
+            `
+          );
+          break;
+        case "profil":
+          html = renderSubPage(
+            "Mon profil",
+            "Informations de votre compte Sniper Business Center.",
+            state.currentUser ? `
+              <div class="page-card">
+                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Nom :</strong> ${p.fullName || "Membre SBC"}</p>
+                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Email :</strong> ${state.currentUser.email}</p>
+                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Pays :</strong> ${p.country || "Bénin"}</p>
+                <p style="font-size:13.5px;margin-bottom:14px;"><strong>Code parrain :</strong> ${p.refCode || "-"}</p>
+                <button class="btn-secondary" id="logoutBtn">Se déconnecter</button>
+              </div>
+            ` : `
+              <div class="page-card">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Vous n'êtes pas encore connecté.</p>
+                <button class="btn-primary" id="profLoginBtn">Se connecter / S'inscrire</button>
+              </div>
+            `
+          );
+          break;
+        default:
+          html = renderAbonnement();
+      }
+
+      appRoot.innerHTML = html;
+
+      document.querySelectorAll(".currency-btn[data-curr]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.currency = btn.dataset.curr;
+          render();
+        });
+      });
+
+      document.querySelectorAll(".pack-select-btn[data-pack]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const found = PACKS.find(item => item.id === btn.dataset.pack);
+          if (found) openPackModal(found);
+        });
+      });
+
+      const advBtn = document.getElementById("advertiserBtn");
+      if (advBtn) {
+        advBtn.addEventListener("click", () => {
+          openModal(`
+            <h3 style="font-size:18px;font-weight:850;margin-bottom:6px;">Campagne Annonceur</h3>
+            <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">
+              Décrivez votre lien ou produit à diffuser auprès des statuts et de la communauté SBC.
+            </p>
+            <form id="adCampForm">
+              <div class="field">
+                <label>Titre de la campagne</label>
+                <input type="text" required placeholder="Ex: Boutique Mode Phénix" />
+              </div>
+              <div class="field">
+                <label>Lien ou contact WhatsApp</label>
+                <input type="text" required placeholder="https://... ou +229..." />
+              </div>
+              <button type="submit" class="btn-green">Envoyer la demande</button>
+            </form>
+          `);
+          document.getElementById("adCampForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            closeModal();
+            showToast("Demande de campagne enregistrée !");
+          });
+        });
+      }
+
+      const homeAuthBtn = document.getElementById("homeAuthBtn");
+      if (homeAuthBtn) homeAuthBtn.addEventListener("click", () => openAuthModal("register"));
+
+      const profLoginBtn = document.getElementById("profLoginBtn");
+      if (profLoginBtn) profLoginBtn.addEventListener("click", () => openAuthModal("login"));
+
+      const logoutBtn = document.getElementById("logoutBtn");
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", async () => {
+          await signOut(auth);
+          showToast("Déconnecté");
+        });
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
