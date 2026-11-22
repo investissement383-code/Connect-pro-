@@ -160,6 +160,15 @@
       padding: 12px 14px; font-weight: 800; font-size: 14px;
       background: var(--green); color: #fff; cursor: pointer;
     }
+    .btn-sebpay {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; border: none; border-radius: 12px;
+      padding: 13px 14px; font-weight: 850; font-size: 14.5px;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff; text-decoration: none; cursor: pointer;
+      box-shadow: 0 6px 16px rgba(22, 163, 74, 0.25);
+      margin-bottom: 12px;
+    }
 
     /* Ad card */
     .ad-banner {
@@ -486,14 +495,14 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js](https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js)";
     import {
       getAuth,
       onAuthStateChanged,
       createUserWithEmailAndPassword,
       signInWithEmailAndPassword,
       signOut
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    } from "[https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js](https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js)";
     import {
       getFirestore,
       doc,
@@ -502,7 +511,9 @@
       addDoc,
       collection,
       serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    } from "[https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js](https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js)";
+
+    const SEBPAY_LINK = "[https://new.sebpay.bj/pay/frais-dinscription-EoD7BP](https://new.sebpay.bj/pay/frais-dinscription-EoD7BP)";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBK-HfC7k_3io0kn8oHwQ1g6MqEueHb4-g",
@@ -840,23 +851,29 @@
           ${formatPrice(pack)} • À vie
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.45;">
-          Soumettez votre référence de paiement (${state.currency === "FCFA" ? "Mobile Money" : "Crypto USDT"}) pour enregistrer votre demande de souscription.
+          1. Cliquez sur le bouton ci-dessous pour régler votre pack via <strong>Sebpay</strong>.<br/>
+          2. Revenez ici et saisissez l'ID / référence de votre transaction pour activer votre pack.
         </p>
+
+        <a href="${SEBPAY_LINK}" target="_blank" rel="noopener noreferrer" class="btn-sebpay">
+          💳 Payer maintenant sur Sebpay (${formatPrice(pack)}) ↗
+        </a>
+
         <form id="packSubmitForm">
           <div class="field">
-            <label>Moyen de paiement</label>
+            <label>Moyen de paiement utilisé</label>
             <select id="payMethod">
               ${state.currency === "FCFA"
-                ? `<option value="MTN MoMo">MTN MoMo</option><option value="Moov Money">Moov Money</option><option value="Wave">Wave</option><option value="Orange Money">Orange Money</option>`
-                : `<option value="USDT (TRC20)">USDT (TRC20)</option><option value="USDT (BEP20)">USDT (BEP20)</option>`
+                ? `<option value="Sebpay (Mobile Money)">Sebpay (Mobile Money)</option><option value="MTN MoMo">MTN MoMo</option><option value="Moov Money">Moov Money</option><option value="Wave">Wave</option><option value="Orange Money">Orange Money</option>`
+                : `<option value="Sebpay">Sebpay</option><option value="USDT (TRC20)">USDT (TRC20)</option><option value="USDT (BEP20)">USDT (BEP20)</option>`
               }
             </select>
           </div>
           <div class="field">
-            <label>Référence / ID de transaction</label>
-            <input type="text" id="payRef" required placeholder="Ex: TX-9845120" />
+            <label>Référence / ID de transaction Sebpay</label>
+            <input type="text" id="payRef" required placeholder="Ex: SEB-9845120" />
           </div>
-          <button type="submit" class="btn-green" id="confirmPackBtn">Confirmer la demande</button>
+          <button type="submit" class="btn-primary" id="confirmPackBtn">Confirmer mon paiement</button>
         </form>
       `);
 
@@ -864,7 +881,7 @@
         e.preventDefault();
         const btn = document.getElementById("confirmPackBtn");
         btn.disabled = true;
-        btn.textContent = "Envoi...";
+        btn.textContent = "Enregistrement...";
         try {
           await addDoc(collection(db, "transactions"), {
             userId: state.currentUser.uid,
@@ -875,15 +892,16 @@
             amount: state.currency === "FCFA" ? pack.fcfa : pack.usd,
             method: document.getElementById("payMethod").value,
             reference: document.getElementById("payRef").value.trim(),
+            paymentUrl: SEBPAY_LINK,
             status: "pending",
             createdAt: serverTimestamp()
           });
           closeModal();
-          showToast("Demande de pack enregistrée !");
+          showToast("Paiement Sebpay enregistré ! En attente de validation.");
         } catch (err) {
           showToast("Erreur lors de l'enregistrement");
           btn.disabled = false;
-          btn.textContent = "Confirmer la demande";
+          btn.textContent = "Confirmer mon paiement";
         }
       });
     }
@@ -891,7 +909,7 @@
     const TUTORIAL_STEPS = [
       { title: "Bienvenue sur SBC", text: "Publiez des campagnes annonceurs en statut WhatsApp et gagnez à chaque vue qualifiée." },
       { title: "Mobile Money ou Crypto", text: "Basculez facilement entre FCFA (Mobile Money) et USD (Crypto) selon votre préférence." },
-      { title: "Choisissez votre Pack à vie", text: "Classique, Ciblé ou Winner : chaque pack débloque l'accès à SBC Ads Network." },
+      { title: "Choisissez votre Pack à vie", text: "Classique, Ciblé ou Winner : réglez via Sebpay et débloquez l'accès à SBC Ads Network." },
       { title: "Options réservées aux membres", text: "Activez un pack pour débloquer l'Espace Pro et la Mise en avant de votre profil." },
       { title: "Parrainage & Équipe", text: "Invitez vos filleuls via votre lien unique et suivez vos gains dans Mes filleuls et Portefeuille." },
       { title: "Navigation complète", text: "Ouvrez le menu ☰ pour accéder à Formations, SBC Shop, SBC Statut, SBC Love et Messages." }
