@@ -63,6 +63,62 @@
     /* Container */
     .container { max-width: 520px; margin: 0 auto; padding: 14px; }
 
+    /* Activation Gate Card */
+    .gate-card {
+      background: var(--card);
+      border: 1.5px solid #f59e0b;
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+    .gate-badge {
+      display: inline-block;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 10px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+    .gate-title {
+      font-size: 20px;
+      line-height: 1.25;
+      font-weight: 900;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+    .gate-text {
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: #334155;
+      margin-bottom: 14px;
+    }
+    .gate-price-box {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .gate-price-label { font-size: 12.5px; color: var(--muted); font-weight: 700; }
+    .gate-price-val { font-size: 22px; font-weight: 900; color: var(--blue); }
+    .pending-box {
+      background: var(--blue-soft);
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+
     /* Back button on Abonnement */
     .sub-top-bar {
       display: flex; align-items: center; justify-content: space-between;
@@ -514,6 +570,7 @@
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const SEBPAY_LINK = "https://new.sebpay.bj/pay/frais-dinscription-EoD7BP";
+    const ACTIVATION_FEE_FCFA = 2150;
 
     const firebaseConfig = {
       apiKey: "AIzaSyBK-HfC7k_3io0kn8oHwQ1g6MqEueHb4-g",
@@ -580,7 +637,9 @@
       currency: "FCFA",
       currentUser: null,
       profile: null,
-      deferredPrompt: null
+      deferredPrompt: null,
+      justRegistered: false,
+      activationSubmitted: false
     };
 
     const appRoot = document.getElementById("appRoot");
@@ -588,6 +647,11 @@
     const drawerBackdrop = document.getElementById("drawerBackdrop");
     const modalBackdrop = document.getElementById("modalBackdrop");
     const modalContent = document.getElementById("modalContent");
+
+    function isAccountActivated() {
+      const p = state.profile || {};
+      return Boolean(p.accountActivated === true || p.pack);
+    }
 
     function showToast(msg) {
       const el = document.getElementById("toast");
@@ -604,6 +668,10 @@
     }
 
     function openDrawer() {
+      if (state.currentUser && !isAccountActivated()) {
+        showToast("Activez votre compte (2 150 FCFA) pour accéder au menu");
+        return;
+      }
       drawer.classList.add("open");
       drawerBackdrop.classList.add("open");
     }
@@ -638,9 +706,14 @@
 
     document.getElementById("profileTopBtn").addEventListener("click", () => {
       if (state.currentUser) {
+        if (!isAccountActivated()) {
+          showToast("Activez d'abord votre compte avec 2 150 FCFA");
+          render();
+          return;
+        }
         navigateTo("profil");
       } else {
-        openAuthModal("login");
+        openAuthModal("register");
       }
     });
 
@@ -648,11 +721,11 @@
       openModal(`
         <h3 style="font-size:17px;font-weight:850;margin-bottom:10px;">Notifications SBC</h3>
         <div style="font-size:13px;color:#334155;display:flex;flex-direction:column;gap:10px;">
-          <div style="background:#eff6ff;padding:10px;border-radius:12px;">
-            <strong>SBC Ads Network :</strong> Nouvelles campagnes statuts WhatsApp disponibles après activation d'un pack.
+          <div style="background:#fffbeb;padding:10px;border-radius:12px;border:1px solid #fde68a;">
+            <strong>Activation requise :</strong> Réglez les <strong>2 150 FCFA</strong> d'activation pour débloquer l'accès complet au site.
           </div>
-          <div style="background:#f8fafc;padding:10px;border-radius:12px;">
-            <strong>Parrainage :</strong> Partagez votre code personnel pour gagner des commissions sur chaque pack activé.
+          <div style="background:#eff6ff;padding:10px;border-radius:12px;">
+            <strong>SBC Ads Network :</strong> Publiez des campagnes statuts WhatsApp dès que votre compte est activé.
           </div>
         </div>
         <div class="modal-actions">
@@ -678,6 +751,11 @@
     });
 
     function navigateTo(page) {
+      if (state.currentUser && !isAccountActivated()) {
+        showToast("Veuillez payer les 2 150 FCFA pour activer votre compte d'abord");
+        render();
+        return;
+      }
       state.page = page;
       document.querySelectorAll(".nav-item[data-page]").forEach(item => {
         const isAct = item.dataset.page === page;
@@ -713,6 +791,7 @@
           country: extra.country || "Bénin",
           refCode: generateRefCode(extra.fullName || "SBC"),
           referredBy: extra.referredBy || "",
+          accountActivated: false,
           pack: null,
           walletBalance: 0,
           activationBalance: 0,
@@ -736,6 +815,7 @@
             uid: user.uid,
             email: user.email,
             fullName: user.email?.split("@")[0] || "Membre SBC",
+            accountActivated: false,
             pack: null,
             walletBalance: 0,
             activationBalance: 0
@@ -743,6 +823,8 @@
         }
       } else {
         state.profile = null;
+        state.justRegistered = false;
+        state.activationSubmitted = false;
       }
       render();
     });
@@ -754,7 +836,7 @@
           ${isReg ? "Créer un compte SBC" : "Connexion à SBC"}
         </h3>
         <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px;">
-          ${isReg ? "Inscription réelle avec Firebase Authentication & Firestore." : "Connectez-vous à votre compte Sniper Business Center."}
+          ${isReg ? "Après inscription, vous devrez activer votre compte avec 2 150 FCFA pour accéder au site." : "Connectez-vous à votre compte Sniper Business Center."}
         </p>
         <form id="authForm">
           ${isReg ? `
@@ -825,18 +907,81 @@
             const referredBy = document.getElementById("authRef").value.trim().toUpperCase();
             const cred = await createUserWithEmailAndPassword(auth, email, pass);
             await ensureUserProfile(cred.user, { fullName, whatsapp, country, referredBy });
-            showToast("Compte créé avec succès !");
+            state.justRegistered = true;
+            state.activationSubmitted = false;
+            showToast("Inscription réussie ! Activez votre compte (2 150 FCFA).");
           } else {
             await signInWithEmailAndPassword(auth, email, pass);
+            state.justRegistered = false;
             showToast("Connexion réussie !");
           }
           closeModal();
+          render();
         } catch (err) {
           showToast(err.message || "Erreur d'authentification");
           btn.disabled = false;
           btn.textContent = isReg ? "S'inscrire maintenant" : "Se connecter";
         }
       });
+    }
+
+    function renderActivationGate() {
+      const p = state.profile || {};
+      const welcomeMsg = state.justRegistered
+        ? `Bienvenue <strong>${p.fullName || "sur SBC"}</strong> ! Votre inscription est enregistrée. Pour accéder au site et débloquer votre espace, vous devez activer votre compte en payant les <strong>2 150 FCFA</strong>.`
+        : `Bonjour <strong>${p.fullName || "Membre SBC"}</strong>, votre compte n'est pas encore activé. Veuillez régler les <strong>2 150 FCFA</strong> d'activation avant d'accéder aux fonctionnalités du site.`;
+
+      return `
+        <section class="gate-card">
+          <span class="gate-badge">🔒 ACTIVATION OBLIGATOIRE DU COMPTE</span>
+          <h1 class="gate-title">Activez votre compte pour accéder au site</h1>
+          <p class="gate-text">${welcomeMsg}</p>
+
+          <div class="gate-price-box">
+            <span class="gate-price-label">Frais d'activation du compte</span>
+            <span class="gate-price-val">2 150 FCFA</span>
+          </div>
+
+          ${state.activationSubmitted ? `
+            <div class="pending-box">
+              ✅ Votre référence de paiement de <strong>2 150 FCFA</strong> a bien été enregistrée. L'accès complet à votre compte sera ouvert dès validation de votre transaction.
+            </div>
+          ` : ""}
+
+          <p class="gate-text" style="margin-bottom:10px;font-size:12.5px;">
+            1. Cliquez sur le bouton vert ci-dessous pour payer <strong>2 150 FCFA</strong> via <strong>Sebpay</strong>.<br/>
+            2. Revenez ici et entrez votre référence de transaction pour confirmer.
+          </p>
+
+          <a href="${SEBPAY_LINK}" target="_blank" rel="noopener noreferrer" class="btn-sebpay">
+            💳 Payer 2 150 FCFA sur Sebpay ↗
+          </a>
+
+          <form id="activationPayForm">
+            <div class="field">
+              <label>Moyen de paiement</label>
+              <select id="actPayMethod">
+                <option value="Sebpay (Mobile Money)">Sebpay (Mobile Money)</option>
+                <option value="MTN MoMo">MTN MoMo</option>
+                <option value="Moov Money">Moov Money</option>
+                <option value="Wave">Wave</option>
+                <option value="Orange Money">Orange Money</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Référence / ID de transaction (2 150 FCFA)</label>
+              <input type="text" id="actPayRef" required placeholder="Ex: SEB-2150984" />
+            </div>
+            <button type="submit" class="btn-primary" id="submitActivationBtn">
+              J'ai payé 2 150 FCFA — Confirmer l'activation
+            </button>
+          </form>
+
+          <div style="margin-top:12px;">
+            <button class="btn-secondary" id="gateLogoutBtn">Se déconnecter</button>
+          </div>
+        </section>
+      `;
     }
 
     function openPackModal(pack) {
@@ -907,7 +1052,7 @@
     }
 
     const TUTORIAL_STEPS = [
-      { title: "Bienvenue sur SBC", text: "Publiez des campagnes annonceurs en statut WhatsApp et gagnez à chaque vue qualifiée." },
+      { title: "Bienvenue sur SBC", text: "Après inscription, activez votre compte (2 150 FCFA) puis publiez des campagnes annonceurs en statut WhatsApp." },
       { title: "Mobile Money ou Crypto", text: "Basculez facilement entre FCFA (Mobile Money) et USD (Crypto) selon votre préférence." },
       { title: "Choisissez votre Pack à vie", text: "Classique, Ciblé ou Winner : réglez via Sebpay et débloquez l'accès à SBC Ads Network." },
       { title: "Options réservées aux membres", text: "Activez un pack pour débloquer l'Espace Pro et la Mise en avant de votre profil." },
@@ -969,6 +1114,18 @@
             ${state.currentUser ? (state.profile?.fullName || state.currentUser.email) : "Invité"}
           </span>
         </div>
+
+        ${!state.currentUser ? `
+          <section class="page-card" style="border-color:#93c5fd;background:#eff6ff;margin-bottom:14px;">
+            <div style="font-size:14.5px;font-weight:850;color:#1e3a8a;margin-bottom:6px;">
+              Nouveau sur SBC ? Créez votre compte
+            </div>
+            <p style="font-size:12.5px;color:#1e40af;margin-bottom:10px;line-height:1.45;">
+              Après votre inscription, vous aurez un message d'activation vous demandant de payer <strong>2 150 FCFA</strong> avant d'accéder au site.
+            </p>
+            <button class="btn-primary" id="topRegisterBtn">S'inscrire / Activer un compte (2 150 FCFA)</button>
+          </section>
+        ` : ""}
 
         <section class="hero-card">
           <h1 class="hero-title">Payez une fois. Vos statuts WhatsApp remboursent le reste.</h1>
@@ -1052,6 +1209,54 @@
     }
 
     function render() {
+      if (state.currentUser && !isAccountActivated()) {
+        appRoot.innerHTML = renderActivationGate();
+
+        const actForm = document.getElementById("activationPayForm");
+        if (actForm) {
+          actForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById("submitActivationBtn");
+            btn.disabled = true;
+            btn.textContent = "Enregistrement...";
+            try {
+              const method = document.getElementById("actPayMethod").value;
+              const reference = document.getElementById("actPayRef").value.trim();
+              await addDoc(collection(db, "transactions"), {
+                userId: state.currentUser.uid,
+                email: state.currentUser.email,
+                type: "account_activation",
+                packId: "activation_2150",
+                packName: "Activation du compte",
+                currency: "FCFA",
+                amount: ACTIVATION_FEE_FCFA,
+                method,
+                reference,
+                paymentUrl: SEBPAY_LINK,
+                status: "pending",
+                createdAt: serverTimestamp()
+              });
+              state.activationSubmitted = true;
+              showToast("Paiement de 2 150 FCFA enregistré ! En attente de validation.");
+              render();
+            } catch (err) {
+              showToast("Erreur lors de l'enregistrement du paiement");
+              btn.disabled = false;
+              btn.textContent = "J'ai payé 2 150 FCFA — Confirmer l'activation";
+            }
+          });
+        }
+
+        const gateLogoutBtn = document.getElementById("gateLogoutBtn");
+        if (gateLogoutBtn) {
+          gateLogoutBtn.addEventListener("click", async () => {
+            await signOut(auth);
+            showToast("Déconnecté");
+          });
+        }
+        return;
+      }
+
       const p = state.profile || {};
       let html = "";
 
@@ -1073,7 +1278,7 @@
               <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
                 ${state.currentUser
                   ? "Choisissez un pack à vie dans Abonnement pour activer SBC Ads Network."
-                  : "Créez votre compte ou connectez-vous pour enregistrer votre progression."}
+                  : "Créez votre compte et activez-le (2 150 FCFA) pour accéder au site."}
               </p>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn-primary" style="flex:1;" onclick="navigateTo('abonnement')">Voir les packs</button>
@@ -1280,6 +1485,9 @@
           });
         });
       }
+
+      const topRegisterBtn = document.getElementById("topRegisterBtn");
+      if (topRegisterBtn) topRegisterBtn.addEventListener("click", () => openAuthModal("register"));
 
       const homeAuthBtn = document.getElementById("homeAuthBtn");
       if (homeAuthBtn) homeAuthBtn.addEventListener("click", () => openAuthModal("register"));
