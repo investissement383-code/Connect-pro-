@@ -166,7 +166,7 @@
       box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
     }
 
-    /* Pack Cards */
+    /* Pack & Contact Cards */
     .pack-card {
       background: var(--card); border: 1.5px solid var(--line);
       border-radius: var(--radius); padding: 16px;
@@ -200,6 +200,19 @@
     .pack-features li::before {
       content: "✓ "; color: var(--green); font-weight: 800;
     }
+
+    .channel-pills {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+    }
+    .channel-pill {
+      font-size: 11.5px; font-weight: 800; padding: 4px 9px;
+      border-radius: 999px; background: #f1f5f9; color: var(--ink);
+    }
+    .channel-pill.wa { background: var(--green-soft); color: var(--green); }
+    .channel-pill.fb { background: var(--blue-soft); color: var(--blue); }
+    .channel-pill.tt { background: var(--rose-soft); color: var(--rose); }
+    .channel-pill.vip { background: var(--purple-soft); color: var(--purple); }
+
     .btn-primary {
       width: 100%; border: none; border-radius: 12px;
       padding: 12px 14px; font-weight: 800; font-size: 14px;
@@ -380,7 +393,7 @@
   <header class="topbar">
     <div class="topbar-left">
       <button class="icon-btn" id="openDrawerBtn" aria-label="Menu">☰</button>
-      <div class="brand-logo" onclick="navigateTo('abonnement')">
+      <div class="brand-logo" onclick="navigateTo('contacts')">
         <span class="brand-badge">SBC</span>
         <span>Sniper Business Center</span>
       </div>
@@ -494,11 +507,12 @@
         <span>Messages</span>
       </span>
     </button>
-    <button class="nav-item" data-page="contacts">
+    <button class="nav-item active" data-page="contacts">
       <span class="nav-item-left">
         <span class="nav-badge-icon" style="background:#dcfce7;color:#15803d;">📞</span>
-        <span>Contacts</span>
+        <span>Contacts (WA / FB / TikTok)</span>
       </span>
+      <span class="active-dot"></span>
     </button>
     <button class="nav-item" data-page="relance">
       <span class="nav-item-left">
@@ -521,12 +535,11 @@
         <span>Solde d'activation</span>
       </span>
     </button>
-    <button class="nav-item active" data-page="abonnement">
+    <button class="nav-item" data-page="abonnement">
       <span class="nav-item-left">
         <span class="nav-badge-icon" style="background:#dbeafe;color:#1d4ed8;">💳</span>
         <span>Abonnement</span>
       </span>
-      <span class="active-dot"></span>
     </button>
     <button class="nav-item" data-page="profil">
       <span class="nav-item-left">
@@ -545,7 +558,7 @@
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 
-  <!-- Auth / Pack / Tutorial Modal -->
+  <!-- Auth / Pack / Contact / Tutorial Modal -->
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal-card" id="modalContent"></div>
   </div>
@@ -564,9 +577,11 @@
       doc,
       getDoc,
       setDoc,
+      updateDoc,
       addDoc,
       collection,
-      serverTimestamp
+      serverTimestamp,
+      increment
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const SEBPAY_LINK = "https://new.sebpay.bj/pay/frais-dinscription-EoD7BP";
@@ -585,6 +600,96 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    const CONTACT_PACKS = [
+      {
+        id: "contacts_whatsapp_500",
+        name: "Pack 500 Contacts WhatsApp",
+        channel: "WhatsApp",
+        channelClass: "wa",
+        tag: "Statuts WA",
+        contactsCount: 500,
+        fcfa: 7500,
+        usd: 17.50,
+        rewardPerViewFcfa: 2,
+        features: [
+          "+500 contacts actifs pour suivre vos statuts WhatsApp",
+          "Gain estimé : 2 FCFA par vue statut enregistrée",
+          "Liste de contacts qualifiés prête à enregistrer",
+          "Boost immédiat des vues sur vos statuts WhatsApp"
+        ]
+      },
+      {
+        id: "contacts_facebook_1000",
+        name: "Pack 1 000 Contacts & Followers Facebook",
+        channel: "Facebook",
+        channelClass: "fb",
+        tag: "Stories & Statuts FB",
+        contactsCount: 1000,
+        fcfa: 14000,
+        usd: 32.50,
+        rewardPerViewFcfa: 2.5,
+        features: [
+          "+1 000 contacts et abonnés actifs sur Facebook",
+          "Suit vos statuts, stories et publications Facebook",
+          "Gain estimé : 2,5 FCFA par vue validée",
+          "Idéal pour élargir votre portée et monétiser vos vues"
+        ]
+      },
+      {
+        id: "contacts_tiktok_1500",
+        name: "Pack 1 500 Contacts & Abonnés TikTok",
+        channel: "TikTok",
+        channelClass: "tt",
+        tag: "Vidéos & Statuts TikTok",
+        contactsCount: 1500,
+        fcfa: 20000,
+        usd: 46.50,
+        rewardPerViewFcfa: 3,
+        features: [
+          "+1 500 contacts et abonnés actifs sur TikTok",
+          "Suit vos statuts, vidéos courtes et lives TikTok",
+          "Gain estimé : 3 FCFA par vue enregistrée",
+          "Accélération rapide de vos vues et revenus quotidiens"
+        ]
+      },
+      {
+        id: "contacts_multi_3000",
+        name: "Pack Multi-Réseaux 3 000 Contacts",
+        channel: "WhatsApp • Facebook • TikTok",
+        channelClass: "",
+        tag: "Populaire",
+        featured: true,
+        contactsCount: 3000,
+        fcfa: 35000,
+        usd: 81.50,
+        rewardPerViewFcfa: 3,
+        features: [
+          "1 000 WhatsApp + 1 000 Facebook + 1 000 TikTok (3 000 contacts)",
+          "Suivi simultané de vos statuts WhatsApp, Facebook et TikTok",
+          "Gain jusqu'à 3 FCFA par vue validée",
+          "Économie de 10 000 FCFA par rapport aux packs séparés"
+        ]
+      },
+      {
+        id: "contacts_vip_6000",
+        name: "Pack VIP 6 000 Contacts Illimité",
+        channel: "WhatsApp • Facebook • TikTok",
+        channelClass: "vip",
+        tag: "VIP Max",
+        vip: true,
+        contactsCount: 6000,
+        fcfa: 65000,
+        usd: 151.00,
+        rewardPerViewFcfa: 3.5,
+        features: [
+          "2 000 WhatsApp + 2 000 Facebook + 2 000 TikTok (6 000 contacts)",
+          "Audience massive sur vos statuts WhatsApp, Facebook et TikTok",
+          "Gain majoré à 3,5 FCFA par vue validée",
+          "Priorité maximale sur les campagnes annonceurs SBC"
+        ]
+      }
+    ];
+
     const PACKS = [
       {
         id: "classique",
@@ -594,8 +699,8 @@
         usd: 5.04,
         rateText: "Jusqu'à 1,75 FCFA / vue statut",
         features: [
-          "Accès à SBC Ads Network",
-          "Diffusion de campagnes statuts WhatsApp",
+          "Accès à SBC Ads Network & Achat de contacts",
+          "Diffusion de campagnes statuts WhatsApp, FB & TikTok",
           "Commission parrainage directe",
           "Pack valable à vie"
         ]
@@ -610,7 +715,7 @@
         rateText: "Jusqu'à 2,00 FCFA / vue statut",
         features: [
           "Taux boosté sur statuts ciblés",
-          "Priorité sur les campagnes annonceurs",
+          "Priorité sur les campagnes annonceurs & packs contacts",
           "Accès formations & outils de relance",
           "Pack valable à vie"
         ]
@@ -633,7 +738,7 @@
     ];
 
     const state = {
-      page: "abonnement",
+      page: "contacts",
       currency: "FCFA",
       currentUser: null,
       profile: null,
@@ -661,10 +766,10 @@
       window._toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
     }
 
-    function formatPrice(pack) {
+    function formatPrice(item) {
       return state.currency === "FCFA"
-        ? `${pack.fcfa.toLocaleString("fr-FR")} FCFA`
-        : `${pack.usd.toFixed(2).replace(".", ",")} $`;
+        ? `${item.fcfa.toLocaleString("fr-FR")} FCFA`
+        : `${item.usd.toFixed(2).replace(".", ",")} $`;
     }
 
     function openDrawer() {
@@ -721,11 +826,11 @@
       openModal(`
         <h3 style="font-size:17px;font-weight:850;margin-bottom:10px;">Notifications SBC</h3>
         <div style="font-size:13px;color:#334155;display:flex;flex-direction:column;gap:10px;">
+          <div style="background:#dcfce7;padding:10px;border-radius:12px;">
+            <strong>Contacts WA, FB & TikTok :</strong> Packs disponibles dès 500 contacts à 7 500 FCFA pour suivre vos statuts et gagner de l'argent.
+          </div>
           <div style="background:#fffbeb;padding:10px;border-radius:12px;border:1px solid #fde68a;">
             <strong>Activation requise :</strong> Réglez les <strong>2 150 FCFA</strong> d'activation pour débloquer l'accès complet au site.
-          </div>
-          <div style="background:#eff6ff;padding:10px;border-radius:12px;">
-            <strong>SBC Ads Network :</strong> Publiez des campagnes statuts WhatsApp dès que votre compte est activé.
           </div>
         </div>
         <div class="modal-actions">
@@ -793,6 +898,10 @@
           referredBy: extra.referredBy || "",
           accountActivated: false,
           pack: null,
+          contactsCount: 0,
+          whatsappContacts: 0,
+          facebookContacts: 0,
+          tiktokContacts: 0,
           walletBalance: 0,
           activationBalance: 0,
           statusViews: 0,
@@ -817,8 +926,13 @@
             fullName: user.email?.split("@")[0] || "Membre SBC",
             accountActivated: false,
             pack: null,
+            contactsCount: 0,
+            whatsappContacts: 0,
+            facebookContacts: 0,
+            tiktokContacts: 0,
             walletBalance: 0,
-            activationBalance: 0
+            activationBalance: 0,
+            statusViews: 0
           };
         }
       } else {
@@ -836,7 +950,7 @@
           ${isReg ? "Créer un compte SBC" : "Connexion à SBC"}
         </h3>
         <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px;">
-          ${isReg ? "Après inscription, vous devrez activer votre compte avec 2 150 FCFA pour accéder au site." : "Connectez-vous à votre compte Sniper Business Center."}
+          ${isReg ? "Après inscription, activez votre compte (2 150 FCFA) puis achetez vos contacts WhatsApp, Facebook et TikTok." : "Connectez-vous à votre compte Sniper Business Center."}
         </p>
         <form id="authForm">
           ${isReg ? `
@@ -928,8 +1042,8 @@
     function renderActivationGate() {
       const p = state.profile || {};
       const welcomeMsg = state.justRegistered
-        ? `Bienvenue <strong>${p.fullName || "sur SBC"}</strong> ! Votre inscription est enregistrée. Pour accéder au site et débloquer votre espace, vous devez activer votre compte en payant les <strong>2 150 FCFA</strong>.`
-        : `Bonjour <strong>${p.fullName || "Membre SBC"}</strong>, votre compte n'est pas encore activé. Veuillez régler les <strong>2 150 FCFA</strong> d'activation avant d'accéder aux fonctionnalités du site.`;
+        ? `Bienvenue <strong>${p.fullName || "sur SBC"}</strong> ! Votre inscription est enregistrée. Pour accéder au site et acheter vos contacts (WhatsApp, Facebook, TikTok), activez votre compte avec <strong>2 150 FCFA</strong>.`
+        : `Bonjour <strong>${p.fullName || "Membre SBC"}</strong>, votre compte n'est pas encore activé. Réglez les <strong>2 150 FCFA</strong> d'activation avant d'accéder au site.`;
 
       return `
         <section class="gate-card">
@@ -982,6 +1096,122 @@
           </div>
         </section>
       `;
+    }
+
+    function openContactPackModal(cPack) {
+      if (!state.currentUser) {
+        showToast("Connectez-vous ou inscrivez-vous pour acheter des contacts");
+        openAuthModal("register");
+        return;
+      }
+      openModal(`
+        <h3 style="font-size:18px;font-weight:850;margin-bottom:4px;">${cPack.name}</h3>
+        <div style="font-size:20px;font-weight:900;color:var(--blue);margin-bottom:10px;">
+          ${formatPrice(cPack)} • +${cPack.contactsCount.toLocaleString("fr-FR")} contacts (${cPack.channel})
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.45;">
+          1. Réglez votre pack de contacts via <strong>Sebpay</strong>.<br/>
+          2. Saisissez votre lien/profil de statut (${cPack.channel}) et la référence de transaction pour enregistrer votre commande.
+        </p>
+
+        <a href="${SEBPAY_LINK}" target="_blank" rel="noopener noreferrer" class="btn-sebpay">
+          💳 Payer ${formatPrice(cPack)} sur Sebpay ↗
+        </a>
+
+        <form id="contactOrderForm">
+          <div class="field">
+            <label>Votre numéro WhatsApp / lien profil Facebook ou TikTok</label>
+            <input type="text" id="targetHandle" required placeholder="Ex: +229... ou @monprofil_tiktok" />
+          </div>
+          <div class="field">
+            <label>Moyen de paiement</label>
+            <select id="contactPayMethod">
+              ${state.currency === "FCFA"
+                ? `<option value="Sebpay (Mobile Money)">Sebpay (Mobile Money)</option><option value="MTN MoMo">MTN MoMo</option><option value="Moov Money">Moov Money</option><option value="Wave">Wave</option><option value="Orange Money">Orange Money</option>`
+                : `<option value="Sebpay">Sebpay</option><option value="USDT (TRC20)">USDT (TRC20)</option><option value="USDT (BEP20)">USDT (BEP20)</option>`
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label>Référence / ID de transaction</label>
+            <input type="text" id="contactPayRef" required placeholder="Ex: SEB-774120" />
+          </div>
+          <button type="submit" class="btn-green" id="confirmContactBtn">Valider l'achat de contacts</button>
+        </form>
+      `);
+
+      document.getElementById("contactOrderForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("confirmContactBtn");
+        btn.disabled = true;
+        btn.textContent = "Enregistrement...";
+        try {
+          const targetHandle = document.getElementById("targetHandle").value.trim();
+          const method = document.getElementById("contactPayMethod").value;
+          const reference = document.getElementById("contactPayRef").value.trim();
+
+          await addDoc(collection(db, "contact_orders"), {
+            userId: state.currentUser.uid,
+            email: state.currentUser.email,
+            contactPackId: cPack.id,
+            contactPackName: cPack.name,
+            channel: cPack.channel,
+            contactsCount: cPack.contactsCount,
+            rewardPerViewFcfa: cPack.rewardPerViewFcfa,
+            targetHandle,
+            currency: state.currency,
+            amount: state.currency === "FCFA" ? cPack.fcfa : cPack.usd,
+            method,
+            reference,
+            status: "pending",
+            createdAt: serverTimestamp()
+          });
+
+          const userRef = doc(db, "users", state.currentUser.uid);
+          const updates = {
+            contactsCount: increment(cPack.contactsCount)
+          };
+          if (cPack.id.includes("whatsapp")) updates.whatsappContacts = increment(cPack.contactsCount);
+          if (cPack.id.includes("facebook")) updates.facebookContacts = increment(cPack.contactsCount);
+          if (cPack.id.includes("tiktok")) updates.tiktokContacts = increment(cPack.contactsCount);
+          if (cPack.id === "contacts_multi_3000") {
+            updates.whatsappContacts = increment(1000);
+            updates.facebookContacts = increment(1000);
+            updates.tiktokContacts = increment(1000);
+          }
+          if (cPack.id === "contacts_vip_6000") {
+            updates.whatsappContacts = increment(2000);
+            updates.facebookContacts = increment(2000);
+            updates.tiktokContacts = increment(2000);
+          }
+          await updateDoc(userRef, updates);
+
+          if (state.profile) {
+            state.profile.contactsCount = (state.profile.contactsCount || 0) + cPack.contactsCount;
+            if (cPack.id.includes("whatsapp")) state.profile.whatsappContacts = (state.profile.whatsappContacts || 0) + cPack.contactsCount;
+            if (cPack.id.includes("facebook")) state.profile.facebookContacts = (state.profile.facebookContacts || 0) + cPack.contactsCount;
+            if (cPack.id.includes("tiktok")) state.profile.tiktokContacts = (state.profile.tiktokContacts || 0) + cPack.contactsCount;
+            if (cPack.id === "contacts_multi_3000") {
+              state.profile.whatsappContacts = (state.profile.whatsappContacts || 0) + 1000;
+              state.profile.facebookContacts = (state.profile.facebookContacts || 0) + 1000;
+              state.profile.tiktokContacts = (state.profile.tiktokContacts || 0) + 1000;
+            }
+            if (cPack.id === "contacts_vip_6000") {
+              state.profile.whatsappContacts = (state.profile.whatsappContacts || 0) + 2000;
+              state.profile.facebookContacts = (state.profile.facebookContacts || 0) + 2000;
+              state.profile.tiktokContacts = (state.profile.tiktokContacts || 0) + 2000;
+            }
+          }
+
+          closeModal();
+          showToast(`+${cPack.contactsCount.toLocaleString("fr-FR")} contacts (${cPack.channel}) ajoutés !`);
+          render();
+        } catch (err) {
+          showToast("Erreur lors de l'enregistrement de la commande");
+          btn.disabled = false;
+          btn.textContent = "Valider l'achat de contacts";
+        }
+      });
     }
 
     function openPackModal(pack) {
@@ -1052,12 +1282,11 @@
     }
 
     const TUTORIAL_STEPS = [
-      { title: "Bienvenue sur SBC", text: "Après inscription, activez votre compte (2 150 FCFA) puis publiez des campagnes annonceurs en statut WhatsApp." },
-      { title: "Mobile Money ou Crypto", text: "Basculez facilement entre FCFA (Mobile Money) et USD (Crypto) selon votre préférence." },
-      { title: "Choisissez votre Pack à vie", text: "Classique, Ciblé ou Winner : réglez via Sebpay et débloquez l'accès à SBC Ads Network." },
-      { title: "Options réservées aux membres", text: "Activez un pack pour débloquer l'Espace Pro et la Mise en avant de votre profil." },
-      { title: "Parrainage & Équipe", text: "Invitez vos filleuls via votre lien unique et suivez vos gains dans Mes filleuls et Portefeuille." },
-      { title: "Navigation complète", text: "Ouvrez le menu ☰ pour accéder à Formations, SBC Shop, SBC Statut, SBC Love et Messages." }
+      { title: "1. Inscription & Activation", text: "Après inscription, activez votre compte (2 150 FCFA) pour débloquer l'accès complet au site." },
+      { title: "2. Achetez des contacts WA, FB & TikTok", text: "Démarrez dès 500 contacts à 7 500 FCFA jusqu'au Pack VIP 6 000 contacts pour faire suivre vos statuts WhatsApp, Facebook et TikTok." },
+      { title: "3. Gagnez de l'argent sur vos vues", text: "Plus vos statuts et publications reçoivent de vues grâce à vos contacts, plus vous cumulez des gains." },
+      { title: "4. Packs & Options membres", text: "Passez sur Pack Classique, Ciblé ou Winner pour booster vos taux et avantages." },
+      { title: "5. Parrainage & Portefeuille", text: "Suivez vos contacts actifs, vos vues et votre solde dans Portefeuille et Mes filleuls." }
     ];
 
     function openTutorial(stepIndex = 0) {
@@ -1088,6 +1317,104 @@
     }
     document.getElementById("helpFab").addEventListener("click", () => openTutorial(0));
 
+    function renderContactsPage() {
+      const p = state.profile || {};
+      const totalContacts = p.contactsCount || 0;
+      const waC = p.whatsappContacts || 0;
+      const fbC = p.facebookContacts || 0;
+      const ttC = p.tiktokContacts || 0;
+
+      const contactCardsHtml = CONTACT_PACKS.map(cp => `
+        <article class="pack-card ${cp.featured ? "featured" : ""} ${cp.vip ? "vip" : ""}">
+          <div class="pack-header">
+            <span class="pack-name">${cp.name}</span>
+            <span class="pack-tag ${cp.vip ? "vip" : ""}">${cp.tag}</span>
+          </div>
+          <div class="channel-pills">
+            <span class="channel-pill ${cp.channelClass}">📱 ${cp.channel}</span>
+            <span class="channel-pill">+${cp.contactsCount.toLocaleString("fr-FR")} contacts</span>
+          </div>
+          <div class="pack-price">${formatPrice(cp)}</div>
+          <div class="pack-rate">Jusqu'à ${cp.rewardPerViewFcfa} FCFA / vue suivie</div>
+          <ul class="pack-features">
+            ${cp.features.map(f => `<li>${f}</li>`).join("")}
+          </ul>
+          <button class="btn-primary contact-buy-btn" data-cpack="${cp.id}">
+            Acheter ${cp.name}
+          </button>
+        </article>
+      `).join("");
+
+      return `
+        <div class="sub-top-bar">
+          <button class="back-pill" onclick="navigateTo('accueil')">← Accueil</button>
+          <span class="user-chip">
+            ${state.currentUser ? (p.fullName || state.currentUser.email) : "Invité"}
+          </span>
+        </div>
+
+        <section class="hero-card">
+          <h1 class="hero-title">Achetez des contacts pour suivre vos statuts WhatsApp, Facebook & TikTok</h1>
+          <p class="hero-sub">
+            Développez votre audience sur <strong>WhatsApp</strong>, <strong>Facebook</strong> et <strong>TikTok</strong> : vos contacts suivent vos statuts et publications, et chaque vue qualifiée vous permet de gagner de l'argent.
+          </p>
+        </section>
+
+        <div class="kpi-grid">
+          <div class="kpi-box">
+            <div class="kpi-label">Total Contacts Actifs</div>
+            <div class="kpi-val">${totalContacts.toLocaleString("fr-FR")}</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Solde Portefeuille</div>
+            <div class="kpi-val">${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</div>
+          </div>
+        </div>
+
+        <div class="page-card" style="margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:800;margin-bottom:8px;">Répartition par réseau :</div>
+          <div class="channel-pills" style="margin-bottom:0;">
+            <span class="channel-pill wa">WhatsApp : ${waC.toLocaleString("fr-FR")}</span>
+            <span class="channel-pill fb">Facebook : ${fbC.toLocaleString("fr-FR")}</span>
+            <span class="channel-pill tt">TikTok : ${ttC.toLocaleString("fr-FR")}</span>
+          </div>
+        </div>
+
+        <div class="currency-toggle">
+          <button class="currency-btn ${state.currency === "FCFA" ? "active" : ""}" data-curr="FCFA">
+            Mobile Money (FCFA)
+          </button>
+          <button class="currency-btn ${state.currency === "USD" ? "active" : ""}" data-curr="USD">
+            Crypto (USD)
+          </button>
+        </div>
+
+        ${contactCardsHtml}
+
+        <section class="page-card">
+          <h3 style="font-size:15px;font-weight:850;margin-bottom:6px;">Déclarer une session de vues statuts</h3>
+          <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.45;">
+            Après avoir publié vos statuts WhatsApp, Facebook ou TikTok auprès de vos contacts, enregistrez vos vues pour créditer votre solde estimé.
+          </p>
+          <form id="claimViewsForm">
+            <div class="field">
+              <label>Réseau du statut / publication</label>
+              <select id="viewChannel">
+                <option value="WhatsApp">Statut WhatsApp</option>
+                <option value="Facebook">Statut / Story Facebook</option>
+                <option value="TikTok">Statut / Vidéo TikTok</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nombre de vues obtenues</label>
+              <input type="number" id="viewsCountInput" min="1" max="50000" required placeholder="Ex: 250" />
+            </div>
+            <button type="submit" class="btn-green">Enregistrer les vues & calculer le gain</button>
+          </form>
+        </section>
+      `;
+    }
+
     function renderAbonnement() {
       const hasPack = Boolean(state.profile && state.profile.pack);
       const packsHtml = PACKS.map(p => `
@@ -1109,28 +1436,16 @@
 
       return `
         <div class="sub-top-bar">
-          <button class="back-pill" onclick="navigateTo('accueil')">← Retour</button>
+          <button class="back-pill" onclick="navigateTo('contacts')">← Contacts WA/FB/TikTok</button>
           <span class="user-chip">
             ${state.currentUser ? (state.profile?.fullName || state.currentUser.email) : "Invité"}
           </span>
         </div>
 
-        ${!state.currentUser ? `
-          <section class="page-card" style="border-color:#93c5fd;background:#eff6ff;margin-bottom:14px;">
-            <div style="font-size:14.5px;font-weight:850;color:#1e3a8a;margin-bottom:6px;">
-              Nouveau sur SBC ? Créez votre compte
-            </div>
-            <p style="font-size:12.5px;color:#1e40af;margin-bottom:10px;line-height:1.45;">
-              Après votre inscription, vous aurez un message d'activation vous demandant de payer <strong>2 150 FCFA</strong> avant d'accéder au site.
-            </p>
-            <button class="btn-primary" id="topRegisterBtn">S'inscrire / Activer un compte (2 150 FCFA)</button>
-          </section>
-        ` : ""}
-
         <section class="hero-card">
-          <h1 class="hero-title">Payez une fois. Vos statuts WhatsApp remboursent le reste.</h1>
+          <h1 class="hero-title">Payez une fois. Vos statuts WhatsApp, Facebook & TikTok remboursent le reste.</h1>
           <p class="hero-sub">
-            Chaque pack est à vie et vous ouvre SBC Ads Network : publiez les pubs des annonceurs en statut, et chaque vue vous rapporte de l'argent.
+            Chaque pack est à vie et vous ouvre SBC Ads Network : achetez des contacts, publiez vos statuts et gagnez sur vos vues.
           </p>
         </section>
 
@@ -1197,7 +1512,7 @@
     function renderSubPage(title, subtitle, bodyHtml) {
       return `
         <div class="sub-top-bar">
-          <button class="back-pill" onclick="navigateTo('abonnement')">← Abonnement</button>
+          <button class="back-pill" onclick="navigateTo('contacts')">← Contacts WA/FB/TikTok</button>
           <span class="user-chip">${state.currentUser ? "Connecté" : "Mode découverte"}</span>
         </div>
         <div class="hero-card">
@@ -1261,27 +1576,30 @@
       let html = "";
 
       switch (state.page) {
+        case "contacts":
+          html = renderContactsPage();
+          break;
         case "abonnement":
           html = renderAbonnement();
           break;
         case "accueil":
           html = renderSubPage(
             "Accueil — Sniper Business Center",
-            "Votre centre d'activités : statuts rémunérés, parrainage, boutique et communauté.",
+            "Achetez des contacts WhatsApp, Facebook et TikTok pour faire suivre vos statuts et gagner de l'argent.",
             `
             <div class="kpi-grid">
               <div class="kpi-box"><div class="kpi-label">Solde Portefeuille</div><div class="kpi-val">${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</div></div>
-              <div class="kpi-box"><div class="kpi-label">Solde Activation</div><div class="kpi-val">${(p.activationBalance || 0).toLocaleString("fr-FR")} FCFA</div></div>
+              <div class="kpi-box"><div class="kpi-label">Contacts Actifs</div><div class="kpi-val">${(p.contactsCount || 0).toLocaleString("fr-FR")}</div></div>
             </div>
             <div class="page-card">
               <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">Démarrage rapide</h3>
               <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
                 ${state.currentUser
-                  ? "Choisissez un pack à vie dans Abonnement pour activer SBC Ads Network."
-                  : "Créez votre compte et activez-le (2 150 FCFA) pour accéder au site."}
+                  ? "Achetez des contacts WhatsApp, Facebook ou TikTok dès 500 contacts à 7 500 FCFA pour booster les vues de vos statuts."
+                  : "Créez votre compte et activez-le (2 150 FCFA) pour accéder au site et acheter des contacts."}
               </p>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn-primary" style="flex:1;" onclick="navigateTo('abonnement')">Voir les packs</button>
+                <button class="btn-primary" style="flex:1;" onclick="navigateTo('contacts')">Acheter des contacts</button>
                 ${!state.currentUser ? `<button class="btn-secondary" style="flex:1;" id="homeAuthBtn">Connexion / Inscription</button>` : ""}
               </div>
             </div>
@@ -1310,11 +1628,11 @@
         case "formations":
           html = renderSubPage(
             "Formations",
-            "Modules pratiques pour optimiser vos vues statuts et votre audience WhatsApp.",
+            "Modules pratiques pour optimiser vos vues statuts WhatsApp, Facebook et TikTok.",
             `
-            <div class="page-card"><strong>Module 1 :</strong> Structurer un statut WhatsApp à fort taux de lecture.</div>
-            <div class="page-card"><strong>Module 2 :</strong> Développer ses contacts ciblés et sa communauté.</div>
-            <div class="page-card"><strong>Module 3 :</strong> Stratégie de parrainage et suivi des performances.</div>
+            <div class="page-card"><strong>Module 1 :</strong> Publier des statuts WhatsApp, Facebook et TikTok qui retiennent l'attention.</div>
+            <div class="page-card"><strong>Module 2 :</strong> Exploiter vos packs de contacts pour multiplier les vues quotidiennes.</div>
+            <div class="page-card"><strong>Module 3 :</strong> Suivre vos gains et développer votre réseau de parrainage.</div>
             `
           );
           break;
@@ -1341,8 +1659,8 @@
         case "ads-network":
           html = renderSubPage(
             "Ads Network",
-            "Publiez les campagnes des annonceurs en statut et suivez vos vues.",
-            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Activez un pack dans <strong>Abonnement</strong> pour accéder au catalogue complet des campagnes rémunérées par vue.</p></div>`
+            "Publiez les campagnes des annonceurs sur WhatsApp, Facebook et TikTok et suivez vos vues.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Achetez des contacts dans <strong>Contacts (WA / FB / TikTok)</strong> dès 500 contacts à 7 500 FCFA pour augmenter les vues de vos statuts et campagnes.</p></div>`
           );
           break;
         case "evenements":
@@ -1355,15 +1673,15 @@
         case "shop":
           html = renderSubPage(
             "SBC Shop",
-            "Boutique et services digitaux de la communauté SBC.",
-            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Packs numériques, outils créateurs et offres partenaires disponibles sur SBC Shop.</p></div>`
+            "Boutique, packs de contacts et services digitaux de la communauté SBC.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Retrouvez nos packs de contacts WhatsApp, Facebook et TikTok dans l'onglet <strong>Contacts</strong>.</p></div>`
           );
           break;
         case "statut":
           html = renderSubPage(
             "SBC Statut",
-            "Espace dédié au partage et à la visibilité des statuts.",
-            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Partagez vos visuels et suivez l'engagement de la communauté.</p></div>`
+            "Espace dédié au suivi de vos statuts WhatsApp, Facebook et TikTok.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Total vues déclarées : <strong>${(p.statusViews || 0).toLocaleString("fr-FR")} vues</strong>.</p></div>`
           );
           break;
         case "love":
@@ -1380,28 +1698,21 @@
             `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Aucune nouvelle conversation pour le moment. Connectez-vous pour échanger avec vos contacts.</p></div>`
           );
           break;
-        case "contacts":
-          html = renderSubPage(
-            "Contacts",
-            "Répertoire et réseau de contacts SBC.",
-            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Développez votre carnet de contacts pour augmenter la portée de vos publications.</p></div>`
-          );
-          break;
         case "relance":
           html = renderSubPage(
             "Relance",
-            "Outils de suivi et relance de vos prospects et filleuls.",
-            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Préparez vos messages de suivi pour accompagner vos filleuls et partenaires.</p></div>`
+            "Outils de suivi et relance de vos contacts, prospects et filleuls.",
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Relancez vos contacts WhatsApp, Facebook et TikTok à chaque nouvelle publication de statut.</p></div>`
           );
           break;
         case "portefeuille":
           html = renderSubPage(
             "Portefeuille",
-            "Consultez vos soldes et l'historique de vos opérations.",
+            "Consultez vos soldes, vos contacts actifs et vos gains liés aux vues.",
             `
             <div class="kpi-grid">
               <div class="kpi-box"><div class="kpi-label">Solde disponible</div><div class="kpi-val">${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</div></div>
-              <div class="kpi-box"><div class="kpi-label">Pack actif</div><div class="kpi-val" style="font-size:14px;">${p.pack || "Aucun"}</div></div>
+              <div class="kpi-box"><div class="kpi-label">Total Contacts</div><div class="kpi-val">${(p.contactsCount || 0).toLocaleString("fr-FR")}</div></div>
             </div>
             `
           );
@@ -1409,7 +1720,7 @@
         case "solde-activation":
           html = renderSubPage(
             "Solde d'activation",
-            "Solde dédié aux activations de packs et services internes.",
+            "Solde dédié aux activations de comptes, packs et services internes.",
             `
             <div class="page-card">
               <div class="kpi-label">Solde d'activation actuel</div>
@@ -1427,6 +1738,7 @@
                 <p style="font-size:13.5px;margin-bottom:8px;"><strong>Nom :</strong> ${p.fullName || "Membre SBC"}</p>
                 <p style="font-size:13.5px;margin-bottom:8px;"><strong>Email :</strong> ${state.currentUser.email}</p>
                 <p style="font-size:13.5px;margin-bottom:8px;"><strong>Pays :</strong> ${p.country || "Bénin"}</p>
+                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Contacts actifs :</strong> ${(p.contactsCount || 0).toLocaleString("fr-FR")}</p>
                 <p style="font-size:13.5px;margin-bottom:14px;"><strong>Code parrain :</strong> ${p.refCode || "-"}</p>
                 <button class="btn-secondary" id="logoutBtn">Se déconnecter</button>
               </div>
@@ -1439,7 +1751,7 @@
           );
           break;
         default:
-          html = renderAbonnement();
+          html = renderContactsPage();
       }
 
       appRoot.innerHTML = html;
@@ -1451,12 +1763,57 @@
         });
       });
 
+      document.querySelectorAll(".contact-buy-btn[data-cpack]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const found = CONTACT_PACKS.find(item => item.id === btn.dataset.cpack);
+          if (found) openContactPackModal(found);
+        });
+      });
+
       document.querySelectorAll(".pack-select-btn[data-pack]").forEach(btn => {
         btn.addEventListener("click", () => {
           const found = PACKS.find(item => item.id === btn.dataset.pack);
           if (found) openPackModal(found);
         });
       });
+
+      const claimViewsForm = document.getElementById("claimViewsForm");
+      if (claimViewsForm) {
+        claimViewsForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const channel = document.getElementById("viewChannel").value;
+          const views = parseInt(document.getElementById("viewsCountInput").value, 10) || 0;
+          if (views <= 0) return;
+          const rate = channel === "TikTok" ? 3 : (channel === "Facebook" ? 2.5 : 2);
+          const earned = Math.round(views * rate);
+
+          if (state.currentUser) {
+            try {
+              const userRef = doc(db, "users", state.currentUser.uid);
+              await updateDoc(userRef, {
+                statusViews: increment(views),
+                walletBalance: increment(earned)
+              });
+              await addDoc(collection(db, "view_claims"), {
+                userId: state.currentUser.uid,
+                email: state.currentUser.email,
+                channel,
+                views,
+                earnedFcfa: earned,
+                createdAt: serverTimestamp()
+              });
+            } catch (err) {
+              // Mise à jour locale de secours si hors ligne
+            }
+          }
+
+          if (!state.profile) state.profile = {};
+          state.profile.statusViews = (state.profile.statusViews || 0) + views;
+          state.profile.walletBalance = (state.profile.walletBalance || 0) + earned;
+          showToast(`+${views} vues (${channel}) → +${earned.toLocaleString("fr-FR")} FCFA ajoutés !`);
+          render();
+        });
+      }
 
       const advBtn = document.getElementById("advertiserBtn");
       if (advBtn) {
@@ -1485,9 +1842,6 @@
           });
         });
       }
-
-      const topRegisterBtn = document.getElementById("topRegisterBtn");
-      if (topRegisterBtn) topRegisterBtn.addEventListener("click", () => openAuthModal("register"));
 
       const homeAuthBtn = document.getElementById("homeAuthBtn");
       if (homeAuthBtn) homeAuthBtn.addEventListener("click", () => openAuthModal("register"));
