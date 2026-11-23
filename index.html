@@ -229,6 +229,11 @@
       padding: 12px 14px; font-weight: 800; font-size: 14px;
       background: var(--green); color: #fff; cursor: pointer;
     }
+    .btn-rose {
+      width: 100%; border: none; border-radius: 12px;
+      padding: 10px 12px; font-weight: 800; font-size: 13px;
+      background: var(--rose); color: #fff; cursor: pointer;
+    }
     .btn-sebpay {
       display: flex; align-items: center; justify-content: center; gap: 8px;
       width: 100%; border: none; border-radius: 12px;
@@ -238,6 +243,25 @@
       box-shadow: 0 6px 16px rgba(22, 163, 74, 0.25);
       margin-bottom: 12px;
     }
+
+    /* Admin Items */
+    .admin-item {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #f8fafc;
+    }
+    .status-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .status-pending { background: var(--amber-soft); color: var(--amber); }
+    .status-approved { background: var(--green-soft); color: var(--green); }
+    .status-rejected { background: var(--rose-soft); color: var(--rose); }
 
     /* Ad card */
     .ad-banner {
@@ -547,6 +571,15 @@
         <span>Mon profil</span>
       </span>
     </button>
+
+    <!-- ADMINISTRATION -->
+    <div class="nav-group-label">ADMINISTRATION</div>
+    <button class="nav-item" data-page="admin">
+      <span class="nav-item-left">
+        <span class="nav-badge-icon" style="background:#fee2e2;color:#b91c1c;">🛡</span>
+        <span>Page Admin (Activation)</span>
+      </span>
+    </button>
   </aside>
 
   <!-- Main Content -->
@@ -576,6 +609,7 @@
       getFirestore,
       doc,
       getDoc,
+      getDocs,
       setDoc,
       updateDoc,
       addDoc,
@@ -586,6 +620,7 @@
 
     const SEBPAY_LINK = "https://new.sebpay.bj/pay/frais-dinscription-EoD7BP";
     const ACTIVATION_FEE_FCFA = 2150;
+    const ADMIN_ACCESS_CODE = "SBC-ADMIN-2026";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBK-HfC7k_3io0kn8oHwQ1g6MqEueHb4-g",
@@ -744,7 +779,11 @@
       profile: null,
       deferredPrompt: null,
       justRegistered: false,
-      activationSubmitted: false
+      activationSubmitted: false,
+      adminUnlocked: false,
+      adminTransactions: [],
+      adminUsers: [],
+      adminLoading: false
     };
 
     const appRoot = document.getElementById("appRoot");
@@ -755,7 +794,7 @@
 
     function isAccountActivated() {
       const p = state.profile || {};
-      return Boolean(p.accountActivated === true || p.pack);
+      return Boolean(p.accountActivated === true || p.pack || state.adminUnlocked);
     }
 
     function showToast(msg) {
@@ -856,7 +895,7 @@
     });
 
     function navigateTo(page) {
-      if (state.currentUser && !isAccountActivated()) {
+      if (state.currentUser && !isAccountActivated() && page !== "admin") {
         showToast("Veuillez payer les 2 150 FCFA pour activer votre compte d'abord");
         render();
         return;
@@ -873,6 +912,9 @@
           item.appendChild(dot);
         }
       });
+      if (page === "admin" && state.adminUnlocked) {
+        loadAdminData();
+      }
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -942,6 +984,80 @@
       }
       render();
     });
+
+    async function loadAdminData() {
+      state.adminLoading = true;
+      render();
+      try {
+        const [txSnap, usersSnap] = await Promise.all([
+          getDocs(collection(db, "transactions")),
+          getDocs(collection(db, "users"))
+        ]);
+        state.adminTransactions = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        state.adminUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (err) {
+        showToast("Erreur lors du chargement des données admin");
+      }
+      state.adminLoading = false;
+      render();
+    }
+
+    async function approveTransactionAndAccount(txId, userId, packName = "Compte activé") {
+      try {
+        await updateDoc(doc(db, "transactions", txId), {
+          status: "approved",
+          approvedAt: serverTimestamp()
+        });
+        if (userId) {
+          await updateDoc(doc(db, "users", userId), {
+            accountActivated: true,
+            pack: packName
+          });
+          if (state.currentUser && state.currentUser.uid === userId && state.profile) {
+            state.profile.accountActivated = true;
+            state.profile.pack = packName;
+          }
+        }
+        showToast("Compte activé et paiement validé !");
+        await loadAdminData();
+      } catch (err) {
+        showToast("Erreur lors de l'activation");
+      }
+    }
+
+    async function rejectTransaction(txId) {
+      try {
+        await updateDoc(doc(db, "transactions", txId), {
+          status: "rejected",
+          rejectedAt: serverTimestamp()
+        });
+        showToast("Transaction marquée comme rejetée");
+        await loadAdminData();
+      } catch (err) {
+        showToast("Erreur lors de la mise à jour");
+      }
+    }
+
+    async function toggleUserActivation(userId, activate) {
+      try {
+        await updateDoc(doc(db, "users", userId), {
+          accountActivated: activate,
+          pack: activate ? "Pack Classique" : null
+        });
+        if (state.currentUser && state.currentUser.uid === userId && state.profile) {
+          state.profile.accountActivated = activate;
+          state.profile.pack = activate ? "Pack Classique" : null;
+        }
+        showToast(activate ? "Compte membre activé !" : "Compte désactivé");
+        await loadAdminData();
+      } catch (err) {
+        showToast("Erreur lors de la modification du compte");
+      }
+    }
+
+    window.approveTransactionAndAccount = approveTransactionAndAccount;
+    window.rejectTransaction = rejectTransaction;
+    window.toggleUserActivation = toggleUserActivation;
 
     function openAuthModal(mode = "register") {
       const isReg = mode === "register";
@@ -1058,7 +1174,7 @@
 
           ${state.activationSubmitted ? `
             <div class="pending-box">
-              ✅ Votre référence de paiement de <strong>2 150 FCFA</strong> a bien été enregistrée. L'accès complet à votre compte sera ouvert dès validation de votre transaction.
+              ✅ Votre référence de paiement de <strong>2 150 FCFA</strong> a bien été envoyée à l'administration. Votre compte sera activé dès validation dans la page Admin.
             </div>
           ` : ""}
 
@@ -1096,6 +1212,126 @@
           </div>
         </section>
       `;
+    }
+
+    function renderAdminPage() {
+      if (!state.adminUnlocked) {
+        return renderSubPage(
+          "Espace Administrateur SBC",
+          "Validez les paiements reçus et activez les comptes des membres inscrits.",
+          `
+          <div class="page-card">
+            <h3 style="font-size:16px;font-weight:850;margin-bottom:8px;">Accès Admin sécurisé</h3>
+            <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">
+              Entrez votre code d'administration pour afficher les demandes de paiement et activer les comptes.
+            </p>
+            <form id="adminUnlockForm">
+              <div class="field">
+                <label>Code Administrateur</label>
+                <input type="password" id="adminCodeInput" required placeholder="Entrez le code admin" />
+              </div>
+              <button type="submit" class="btn-primary">Déverrouiller la page Admin</button>
+            </form>
+          </div>
+          `
+        );
+      }
+
+      if (state.adminLoading) {
+        return renderSubPage(
+          "Page Admin — Activation des comptes",
+          "Chargement des transactions et des comptes membres...",
+          `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Chargement en cours...</p></div>`
+        );
+      }
+
+      const pendingTx = state.adminTransactions.filter(t => t.status === "pending");
+      const allTxHtml = state.adminTransactions.length
+        ? state.adminTransactions.map(tx => {
+            const st = tx.status || "pending";
+            const badgeClass = st === "approved" ? "status-approved" : (st === "rejected" ? "status-rejected" : "status-pending");
+            const badgeLabel = st === "approved" ? "Validé" : (st === "rejected" ? "Rejeté" : "En attente");
+            return `
+              <div class="admin-item">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+                  <strong style="font-size:14px;">${tx.packName || "Activation compte"}</strong>
+                  <span class="status-badge ${badgeClass}">${badgeLabel}</span>
+                </div>
+                <p style="font-size:12.5px;color:#334155;margin-bottom:4px;">
+                  <strong>Membre :</strong> ${tx.email || tx.userId}
+                </p>
+                <p style="font-size:12.5px;color:#334155;margin-bottom:4px;">
+                  <strong>Montant :</strong> ${(tx.amount || 0).toLocaleString("fr-FR")} ${tx.currency || "FCFA"} • <strong>Moyen :</strong> ${tx.method || "-"}
+                </p>
+                <p style="font-size:12.5px;color:var(--blue);font-weight:700;margin-bottom:10px;">
+                  Référence : ${tx.reference || "-"}
+                </p>
+                ${st === "pending" ? `
+                  <div style="display:flex;gap:8px;">
+                    <button class="btn-green" style="flex:1;" onclick="approveTransactionAndAccount('${tx.id}', '${tx.userId || ""}', '${(tx.packName || "Compte activé").replace(/'/g, "")}')">
+                      ✓ Activer le compte
+                    </button>
+                    <button class="btn-rose" style="flex:1;" onclick="rejectTransaction('${tx.id}')">
+                      ✕ Rejeter
+                    </button>
+                  </div>
+                ` : ""}
+              </div>
+            `;
+          }).join("")
+        : `<p style="font-size:13px;color:var(--muted);">Aucune transaction enregistrée pour le moment.</p>`;
+
+      const usersHtml = state.adminUsers.length
+        ? state.adminUsers.map(u => {
+            const active = Boolean(u.accountActivated || u.pack);
+            return `
+              <div class="admin-item">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+                  <strong style="font-size:13.5px;">${u.fullName || u.email || u.uid}</strong>
+                  <span class="status-badge ${active ? "status-approved" : "status-pending"}">
+                    ${active ? "Actif" : "Non activé"}
+                  </span>
+                </div>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">
+                  ${u.email || ""} • ${u.whatsapp || ""} • Contacts : ${(u.contactsCount || 0).toLocaleString("fr-FR")}
+                </p>
+                <button class="${active ? "btn-secondary" : "btn-primary"}" onclick="toggleUserActivation('${u.id}', ${!active})">
+                  ${active ? "Désactiver le compte" : "Activer ce compte maintenant"}
+                </button>
+              </div>
+            `;
+          }).join("")
+        : `<p style="font-size:13px;color:var(--muted);">Aucun utilisateur trouvé.</p>`;
+
+      return renderSubPage(
+        "Page Admin — Activation des comptes",
+        "Vérifiez les références de paiement et activez les comptes des clients.",
+        `
+        <div class="kpi-grid">
+          <div class="kpi-box">
+            <div class="kpi-label">Paiements en attente</div>
+            <div class="kpi-val">${pendingTx.length}</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Total Membres</div>
+            <div class="kpi-val">${state.adminUsers.length}</div>
+          </div>
+        </div>
+
+        <div class="page-card" style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="font-size:15px;font-weight:850;">Demandes de paiement & activation</h3>
+            <button class="btn-secondary" style="width:auto;padding:6px 10px;font-size:12px;" id="refreshAdminBtn">↻ Actualiser</button>
+          </div>
+          ${allTxHtml}
+        </div>
+
+        <div class="page-card">
+          <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Liste des comptes membres</h3>
+          ${usersHtml}
+        </div>
+        `
+      );
     }
 
     function openContactPackModal(cPack) {
@@ -1282,7 +1518,7 @@
     }
 
     const TUTORIAL_STEPS = [
-      { title: "1. Inscription & Activation", text: "Après inscription, activez votre compte (2 150 FCFA) pour débloquer l'accès complet au site." },
+      { title: "1. Inscription & Activation", text: "Après inscription, activez votre compte (2 150 FCFA) puis l'administrateur valide votre paiement dans la Page Admin." },
       { title: "2. Achetez des contacts WA, FB & TikTok", text: "Démarrez dès 500 contacts à 7 500 FCFA jusqu'au Pack VIP 6 000 contacts pour faire suivre vos statuts WhatsApp, Facebook et TikTok." },
       { title: "3. Gagnez de l'argent sur vos vues", text: "Plus vos statuts et publications reçoivent de vues grâce à vos contacts, plus vous cumulez des gains." },
       { title: "4. Packs & Options membres", text: "Passez sur Pack Classique, Ciblé ou Winner pour booster vos taux et avantages." },
@@ -1524,7 +1760,7 @@
     }
 
     function render() {
-      if (state.currentUser && !isAccountActivated()) {
+      if (state.currentUser && !isAccountActivated() && state.page !== "admin") {
         appRoot.innerHTML = renderActivationGate();
 
         const actForm = document.getElementById("activationPayForm");
@@ -1552,7 +1788,7 @@
                 createdAt: serverTimestamp()
               });
               state.activationSubmitted = true;
-              showToast("Paiement de 2 150 FCFA enregistré ! En attente de validation.");
+              showToast("Paiement de 2 150 FCFA enregistré ! En attente de validation admin.");
               render();
             } catch (err) {
               showToast("Erreur lors de l'enregistrement du paiement");
@@ -1576,6 +1812,9 @@
       let html = "";
 
       switch (state.page) {
+        case "admin":
+          html = renderAdminPage();
+          break;
         case "contacts":
           html = renderContactsPage();
           break;
@@ -1755,6 +1994,26 @@
       }
 
       appRoot.innerHTML = html;
+
+      const adminUnlockForm = document.getElementById("adminUnlockForm");
+      if (adminUnlockForm) {
+        adminUnlockForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const code = document.getElementById("adminCodeInput").value.trim();
+          if (code === ADMIN_ACCESS_CODE) {
+            state.adminUnlocked = true;
+            showToast("Page Admin déverrouillée");
+            await loadAdminData();
+          } else {
+            showToast("Code administrateur incorrect");
+          }
+        });
+      }
+
+      const refreshAdminBtn = document.getElementById("refreshAdminBtn");
+      if (refreshAdminBtn) {
+        refreshAdminBtn.addEventListener("click", () => loadAdminData());
+      }
 
       document.querySelectorAll(".currency-btn[data-curr]").forEach(btn => {
         btn.addEventListener("click", () => {
