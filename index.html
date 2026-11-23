@@ -252,6 +252,10 @@
       margin-bottom: 10px;
       background: #f8fafc;
     }
+    .admin-item.unpaid-reg {
+      border-color: #f59e0b;
+      background: #fffbeb;
+    }
     .status-badge {
       display: inline-block;
       font-size: 11px;
@@ -1048,7 +1052,7 @@
           state.profile.accountActivated = activate;
           state.profile.pack = activate ? "Pack Classique" : null;
         }
-        showToast(activate ? "Compte membre activé !" : "Compte désactivé");
+        showToast(activate ? "Compte client activé !" : "Compte client désactivé");
         await loadAdminData();
       } catch (err) {
         showToast("Erreur lors de la modification du compte");
@@ -1139,7 +1143,7 @@
             await ensureUserProfile(cred.user, { fullName, whatsapp, country, referredBy });
             state.justRegistered = true;
             state.activationSubmitted = false;
-            showToast("Inscription réussie ! Activez votre compte (2 150 FCFA).");
+            showToast("Inscription réussie ! Visible dans la page Admin.");
           } else {
             await signInWithEmailAndPassword(auth, email, pass);
             state.justRegistered = false;
@@ -1218,12 +1222,12 @@
       if (!state.adminUnlocked) {
         return renderSubPage(
           "Espace Administrateur SBC",
-          "Validez les paiements reçus et activez les comptes des membres inscrits.",
+          "Consultez toutes les inscriptions (même sans paiement) et activez ou non les comptes clients.",
           `
           <div class="page-card">
             <h3 style="font-size:16px;font-weight:850;margin-bottom:8px;">Accès Admin sécurisé</h3>
             <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">
-              Entrez votre code d'administration pour afficher les demandes de paiement et activer les comptes.
+              Entrez votre code d'administration pour afficher les inscriptions, les paiements et activer les comptes.
             </p>
             <form id="adminUnlockForm">
               <div class="field">
@@ -1240,12 +1244,37 @@
       if (state.adminLoading) {
         return renderSubPage(
           "Page Admin — Activation des comptes",
-          "Chargement des transactions et des comptes membres...",
+          "Chargement des inscriptions et des transactions...",
           `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Chargement en cours...</p></div>`
         );
       }
 
+      const unactivatedUsers = state.adminUsers.filter(u => !(u.accountActivated || u.pack));
       const pendingTx = state.adminTransactions.filter(t => t.status === "pending");
+
+      const unactivatedHtml = unactivatedUsers.length
+        ? unactivatedUsers.map(u => `
+            <div class="admin-item unpaid-reg">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+                <strong style="font-size:14px;">${u.fullName || u.email || u.uid}</strong>
+                <span class="status-badge status-pending">Inscrit • Non activé</span>
+              </div>
+              <p style="font-size:12px;color:#334155;margin-bottom:3px;">
+                <strong>Email :</strong> ${u.email || "-"}
+              </p>
+              <p style="font-size:12px;color:#334155;margin-bottom:3px;">
+                <strong>WhatsApp :</strong> ${u.whatsapp || "-"} • <strong>Pays :</strong> ${u.country || "-"}
+              </p>
+              <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+                Parrain : ${u.referredBy || "Aucun"} • Code : ${u.refCode || "-"}
+              </p>
+              <button class="btn-green" onclick="toggleUserActivation('${u.id}', true)">
+                ✓ Activer ce compte maintenant
+              </button>
+            </div>
+          `).join("")
+        : `<p style="font-size:13px;color:var(--muted);">Aucune nouvelle inscription en attente d'activation.</p>`;
+
       const allTxHtml = state.adminTransactions.length
         ? state.adminTransactions.map(tx => {
             const st = tx.status || "pending";
@@ -1305,29 +1334,34 @@
 
       return renderSubPage(
         "Page Admin — Activation des comptes",
-        "Vérifiez les références de paiement et activez les comptes des clients.",
+        "Voyez chaque inscription (même sans paiement) et décidez d'activer le compte ou non.",
         `
         <div class="kpi-grid">
           <div class="kpi-box">
-            <div class="kpi-label">Paiements en attente</div>
-            <div class="kpi-val">${pendingTx.length}</div>
+            <div class="kpi-label">Inscriptions à activer</div>
+            <div class="kpi-val">${unactivatedUsers.length}</div>
           </div>
           <div class="kpi-box">
-            <div class="kpi-label">Total Membres</div>
-            <div class="kpi-val">${state.adminUsers.length}</div>
+            <div class="kpi-label">Paiements en attente</div>
+            <div class="kpi-val">${pendingTx.length}</div>
           </div>
         </div>
 
         <div class="page-card" style="margin-bottom:12px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <h3 style="font-size:15px;font-weight:850;">Demandes de paiement & activation</h3>
+            <h3 style="font-size:15px;font-weight:850;">Nouvelles inscriptions (payé ou non)</h3>
             <button class="btn-secondary" style="width:auto;padding:6px 10px;font-size:12px;" id="refreshAdminBtn">↻ Actualiser</button>
           </div>
+          ${unactivatedHtml}
+        </div>
+
+        <div class="page-card" style="margin-bottom:12px;">
+          <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Demandes de paiement & activation</h3>
           ${allTxHtml}
         </div>
 
         <div class="page-card">
-          <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Liste des comptes membres</h3>
+          <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Tous les comptes membres (${state.adminUsers.length})</h3>
           ${usersHtml}
         </div>
         `
@@ -1518,7 +1552,7 @@
     }
 
     const TUTORIAL_STEPS = [
-      { title: "1. Inscription & Activation", text: "Après inscription, activez votre compte (2 150 FCFA) puis l'administrateur valide votre paiement dans la Page Admin." },
+      { title: "1. Inscription & Activation", text: "Dès qu'un client s'inscrit, son compte apparaît dans la Page Admin : vous pouvez l'activer ou non, qu'il ait déjà payé ou pas." },
       { title: "2. Achetez des contacts WA, FB & TikTok", text: "Démarrez dès 500 contacts à 7 500 FCFA jusqu'au Pack VIP 6 000 contacts pour faire suivre vos statuts WhatsApp, Facebook et TikTok." },
       { title: "3. Gagnez de l'argent sur vos vues", text: "Plus vos statuts et publications reçoivent de vues grâce à vos contacts, plus vous cumulez des gains." },
       { title: "4. Packs & Options membres", text: "Passez sur Pack Classique, Ciblé ou Winner pour booster vos taux et avantages." },
