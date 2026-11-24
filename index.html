@@ -118,6 +118,17 @@
       margin-bottom: 14px;
       font-weight: 600;
     }
+    .error-box {
+      background: #ffe4e6;
+      border: 1px solid #fda4af;
+      color: #9f1239;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
 
     /* Back button on Abonnement */
     .sub-top-bar {
@@ -613,18 +624,18 @@
       getFirestore,
       doc,
       getDoc,
-      getDocs,
       setDoc,
       updateDoc,
       addDoc,
       collection,
+      onSnapshot,
       serverTimestamp,
       increment
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const SEBPAY_LINK = "https://new.sebpay.bj/pay/frais-dinscription-EoD7BP";
     const ACTIVATION_FEE_FCFA = 2150;
-    const ADMIN_ACCESS_CODE = "SBC-ADMIN-2026";
+    const ADMIN_EMAIL = "admin@sbc.com";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBK-HfC7k_3io0kn8oHwQ1g6MqEueHb4-g",
@@ -790,15 +801,24 @@
       adminLoading: false
     };
 
+    let unsubscribeAdminUsers = null;
+    let unsubscribeAdminTx = null;
+    let adminErrorMessage = "";
+
     const appRoot = document.getElementById("appRoot");
     const drawer = document.getElementById("drawer");
     const drawerBackdrop = document.getElementById("drawerBackdrop");
     const modalBackdrop = document.getElementById("modalBackdrop");
     const modalContent = document.getElementById("modalContent");
 
+    function isAdminUser() {
+      const email = (state.currentUser?.email || "").toLowerCase();
+      return Boolean(state.adminUnlocked && (email === ADMIN_EMAIL || state.profile?.role === "admin"));
+    }
+
     function isAccountActivated() {
       const p = state.profile || {};
-      return Boolean(p.accountActivated === true || p.pack || state.adminUnlocked);
+      return Boolean(p.accountActivated === true || p.pack || isAdminUser());
     }
 
     function showToast(msg) {
@@ -815,8 +835,68 @@
         : `${item.usd.toFixed(2).replace(".", ",")} $`;
     }
 
+    function stopAdminListeners() {
+      if (unsubscribeAdminUsers) {
+        unsubscribeAdminUsers();
+        unsubscribeAdminUsers = null;
+      }
+      if (unsubscribeAdminTx) {
+        unsubscribeAdminTx();
+        unsubscribeAdminTx = null;
+      }
+    }
+
+    function startAdminListeners() {
+      stopAdminListeners();
+      adminErrorMessage = "";
+      state.adminLoading = true;
+      render();
+
+      let usersLoaded = false;
+      let txLoaded = false;
+
+      const checkDone = () => {
+        if (usersLoaded && txLoaded) {
+          state.adminLoading = false;
+          render();
+        }
+      };
+
+      unsubscribeAdminUsers = onSnapshot(
+        collection(db, "users"),
+        (snap) => {
+          state.adminUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          usersLoaded = true;
+          checkDone();
+        },
+        (err) => {
+          adminErrorMessage = `Erreur lecture "users" : ${err.code || err.message}`;
+          usersLoaded = true;
+          checkDone();
+        }
+      );
+
+      unsubscribeAdminTx = onSnapshot(
+        collection(db, "transactions"),
+        (snap) => {
+          state.adminTransactions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          txLoaded = true;
+          checkDone();
+        },
+        (err) => {
+          adminErrorMessage = `Erreur lecture "transactions" : ${err.code || err.message}`;
+          txLoaded = true;
+          checkDone();
+        }
+      );
+    }
+
+    async function loadAdminData() {
+      startAdminListeners();
+    }
+
     function openDrawer() {
-      if (state.currentUser && !isAccountActivated()) {
+      if (state.currentUser && !isAccountActivated() && !isAdminUser()) {
         showToast("Activez votre compte (2 150 FCFA) pour accéder au menu");
         return;
       }
@@ -854,7 +934,7 @@
 
     document.getElementById("profileTopBtn").addEventListener("click", () => {
       if (state.currentUser) {
-        if (!isAccountActivated()) {
+        if (!isAccountActivated() && !isAdminUser()) {
           showToast("Activez d'abord votre compte avec 2 150 FCFA");
           render();
           return;
@@ -899,7 +979,7 @@
     });
 
     function navigateTo(page) {
-      if (state.currentUser && !isAccountActivated() && page !== "admin") {
+      if (state.currentUser && !isAccountActivated() && !isAdminUser() && page !== "admin") {
         showToast("Veuillez payer les 2 150 FCFA pour activer votre compte d'abord");
         render();
         return;
@@ -916,7 +996,8 @@
           item.appendChild(dot);
         }
       });
-      if (page === "admin" && state.adminUnlocked) {
+      if (page === "admin" && state.currentUser && (state.currentUser.email || "").toLowerCase() === ADMIN_EMAIL) {
+        state.adminUnlocked = true;
         loadAdminData();
       }
       render();
@@ -933,17 +1014,19 @@
     async function ensureUserProfile(user, extra = {}) {
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
+      const isAdminEmail = (user.email || "").toLowerCase() === ADMIN_EMAIL;
       if (!snap.exists()) {
         const data = {
           uid: user.uid,
           email: user.email || "",
-          fullName: extra.fullName || user.email?.split("@")[0] || "Membre SBC",
+          fullName: extra.fullName || (isAdminEmail ? "Administrateur SBC" : (user.email?.split("@")[0] || "Membre SBC")),
           whatsapp: extra.whatsapp || "",
           country: extra.country || "Bénin",
           refCode: generateRefCode(extra.fullName || "SBC"),
           referredBy: extra.referredBy || "",
-          accountActivated: false,
-          pack: null,
+          role: isAdminEmail ? "admin" : "user",
+          accountActivated: isAdminEmail ? true : false,
+          pack: isAdminEmail ? "Admin" : null,
           contactsCount: 0,
           whatsappContacts: 0,
           facebookContacts: 0,
@@ -981,30 +1064,21 @@
             statusViews: 0
           };
         }
+        if ((user.email || "").toLowerCase() === ADMIN_EMAIL) {
+          state.adminUnlocked = true;
+          if (state.page === "admin") {
+            loadAdminData();
+          }
+        }
       } else {
+        stopAdminListeners();
         state.profile = null;
         state.justRegistered = false;
         state.activationSubmitted = false;
+        state.adminUnlocked = false;
       }
       render();
     });
-
-    async function loadAdminData() {
-      state.adminLoading = true;
-      render();
-      try {
-        const [txSnap, usersSnap] = await Promise.all([
-          getDocs(collection(db, "transactions")),
-          getDocs(collection(db, "users"))
-        ]);
-        state.adminTransactions = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        state.adminUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch (err) {
-        showToast("Erreur lors du chargement des données admin");
-      }
-      state.adminLoading = false;
-      render();
-    }
 
     async function approveTransactionAndAccount(txId, userId, packName = "Compte activé") {
       try {
@@ -1023,7 +1097,6 @@
           }
         }
         showToast("Compte activé et paiement validé !");
-        await loadAdminData();
       } catch (err) {
         showToast("Erreur lors de l'activation");
       }
@@ -1036,7 +1109,6 @@
           rejectedAt: serverTimestamp()
         });
         showToast("Transaction marquée comme rejetée");
-        await loadAdminData();
       } catch (err) {
         showToast("Erreur lors de la mise à jour");
       }
@@ -1053,7 +1125,6 @@
           state.profile.pack = activate ? "Pack Classique" : null;
         }
         showToast(activate ? "Compte client activé !" : "Compte client désactivé");
-        await loadAdminData();
       } catch (err) {
         showToast("Erreur lors de la modification du compte");
       }
@@ -1219,22 +1290,25 @@
     }
 
     function renderAdminPage() {
-      if (!state.adminUnlocked) {
+      const currentEmail = (state.currentUser?.email || "").toLowerCase();
+      const authenticatedAsAdmin = Boolean(state.currentUser && currentEmail === ADMIN_EMAIL);
+
+      if (!authenticatedAsAdmin) {
         return renderSubPage(
           "Espace Administrateur SBC",
-          "Consultez toutes les inscriptions (même sans paiement) et activez ou non les comptes clients.",
+          "Connectez-vous avec le compte administrateur (admin@sbc.com) pour consulter les inscriptions et activer les comptes.",
           `
           <div class="page-card">
-            <h3 style="font-size:16px;font-weight:850;margin-bottom:8px;">Accès Admin sécurisé</h3>
+            <h3 style="font-size:16px;font-weight:850;margin-bottom:8px;">Connexion Admin (${ADMIN_EMAIL})</h3>
             <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">
-              Entrez votre code d'administration pour afficher les inscriptions, les paiements et activer les comptes.
+              Entrez le mot de passe du compte <strong>${ADMIN_EMAIL}</strong> afin d'authentifier votre session Firebase Admin.
             </p>
             <form id="adminUnlockForm">
               <div class="field">
-                <label>Code Administrateur</label>
-                <input type="password" id="adminCodeInput" required placeholder="Entrez le code admin" />
+                <label>Mot de passe Admin (${ADMIN_EMAIL})</label>
+                <input type="password" id="adminCodeInput" required placeholder="Mot de passe admin" />
               </div>
-              <button type="submit" class="btn-primary">Déverrouiller la page Admin</button>
+              <button type="submit" class="btn-primary" id="adminUnlockBtn">Se connecter & ouvrir la Page Admin</button>
             </form>
           </div>
           `
@@ -1244,13 +1318,19 @@
       if (state.adminLoading) {
         return renderSubPage(
           "Page Admin — Activation des comptes",
-          "Chargement des inscriptions et des transactions...",
+          "Chargement en temps réel des inscriptions et des transactions...",
           `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Chargement en cours...</p></div>`
         );
       }
 
       const unactivatedUsers = state.adminUsers.filter(u => !(u.accountActivated || u.pack));
       const pendingTx = state.adminTransactions.filter(t => t.status === "pending");
+
+      const errorBannerHtml = adminErrorMessage
+        ? `<div class="error-box">
+             ⚠️ <strong>Problème Firestore :</strong> ${adminErrorMessage}
+           </div>`
+        : "";
 
       const unactivatedHtml = unactivatedUsers.length
         ? unactivatedUsers.map(u => `
@@ -1334,8 +1414,10 @@
 
       return renderSubPage(
         "Page Admin — Activation des comptes",
-        "Voyez chaque inscription (même sans paiement) et décidez d'activer le compte ou non.",
+        "Voyez chaque inscription (même sans paiement) en temps réel et décidez d'activer le compte ou non.",
         `
+        ${errorBannerHtml}
+
         <div class="kpi-grid">
           <div class="kpi-box">
             <div class="kpi-label">Inscriptions à activer</div>
@@ -1363,6 +1445,10 @@
         <div class="page-card">
           <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Tous les comptes membres (${state.adminUsers.length})</h3>
           ${usersHtml}
+        </div>
+
+        <div style="margin-top:12px;">
+          <button class="btn-secondary" id="adminLogoutBtn">Déconnexion Admin</button>
         </div>
         `
       );
@@ -1794,7 +1880,7 @@
     }
 
     function render() {
-      if (state.currentUser && !isAccountActivated() && state.page !== "admin") {
+      if (state.currentUser && !isAccountActivated() && !isAdminUser() && state.page !== "admin") {
         appRoot.innerHTML = renderActivationGate();
 
         const actForm = document.getElementById("activationPayForm");
@@ -2033,13 +2119,23 @@
       if (adminUnlockForm) {
         adminUnlockForm.addEventListener("submit", async (e) => {
           e.preventDefault();
-          const code = document.getElementById("adminCodeInput").value.trim();
-          if (code === ADMIN_ACCESS_CODE) {
+          const password = document.getElementById("adminCodeInput").value.trim();
+          const btn = document.getElementById("adminUnlockBtn");
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Connexion admin...";
+          }
+          try {
+            await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
             state.adminUnlocked = true;
-            showToast("Page Admin déverrouillée");
+            showToast("Connecté en tant qu'administrateur");
             await loadAdminData();
-          } else {
-            showToast("Code administrateur incorrect");
+          } catch (err) {
+            showToast("Identifiants admin invalides ou compte admin inexistant");
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = "Se connecter & ouvrir la Page Admin";
+            }
           }
         });
       }
@@ -2047,6 +2143,15 @@
       const refreshAdminBtn = document.getElementById("refreshAdminBtn");
       if (refreshAdminBtn) {
         refreshAdminBtn.addEventListener("click", () => loadAdminData());
+      }
+
+      const adminLogoutBtn = document.getElementById("adminLogoutBtn");
+      if (adminLogoutBtn) {
+        adminLogoutBtn.addEventListener("click", async () => {
+          stopAdminListeners();
+          await signOut(auth);
+          showToast("Session admin fermée");
+        });
       }
 
       document.querySelectorAll(".currency-btn[data-curr]").forEach(btn => {
@@ -2145,6 +2250,7 @@
       const logoutBtn = document.getElementById("logoutBtn");
       if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
+          stopAdminListeners();
           await signOut(auth);
           showToast("Déconnecté");
         });
