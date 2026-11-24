@@ -130,7 +130,7 @@
       font-weight: 600;
     }
 
-    /* Back button on Abonnement */
+    /* Back button on Subpages */
     .sub-top-bar {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 12px;
@@ -255,7 +255,7 @@
       margin-bottom: 12px;
     }
 
-    /* Admin Items */
+    /* Admin & History Items */
     .admin-item {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -565,7 +565,7 @@
     <button class="nav-item" data-page="portefeuille">
       <span class="nav-item-left">
         <span class="nav-badge-icon" style="background:#dcfce7;color:#16a34a;">👛</span>
-        <span>Portefeuille</span>
+        <span>Portefeuille & Retrait</span>
       </span>
     </button>
     <button class="nav-item" data-page="solde-activation">
@@ -592,7 +592,7 @@
     <button class="nav-item" data-page="admin">
       <span class="nav-item-left">
         <span class="nav-badge-icon" style="background:#fee2e2;color:#b91c1c;">🛡</span>
-        <span>Page Admin (Activation)</span>
+        <span>Page Admin (Activation & Retraits)</span>
       </span>
     </button>
   </aside>
@@ -628,6 +628,8 @@
       updateDoc,
       addDoc,
       collection,
+      query,
+      where,
       onSnapshot,
       serverTimestamp,
       increment
@@ -635,6 +637,7 @@
 
     const SEBPAY_LINK = "https://new.sebpay.bj/pay/frais-dinscription-EoD7BP";
     const ACTIVATION_FEE_FCFA = 2150;
+    const MIN_WITHDRAWAL_FCFA = 2000;
     const ADMIN_EMAIL = "admin@sbc.com";
 
     const firebaseConfig = {
@@ -798,11 +801,15 @@
       adminUnlocked: false,
       adminTransactions: [],
       adminUsers: [],
+      adminWithdrawals: [],
+      userWithdrawals: [],
       adminLoading: false
     };
 
     let unsubscribeAdminUsers = null;
     let unsubscribeAdminTx = null;
+    let unsubscribeAdminWd = null;
+    let unsubscribeUserWd = null;
     let adminErrorMessage = "";
 
     const appRoot = document.getElementById("appRoot");
@@ -826,7 +833,7 @@
       el.textContent = msg;
       el.classList.add("show");
       clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+      window._toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
     }
 
     function formatPrice(item) {
@@ -844,6 +851,29 @@
         unsubscribeAdminTx();
         unsubscribeAdminTx = null;
       }
+      if (unsubscribeAdminWd) {
+        unsubscribeAdminWd();
+        unsubscribeAdminWd = null;
+      }
+    }
+
+    function stopUserWithdrawalListener() {
+      if (unsubscribeUserWd) {
+        unsubscribeUserWd();
+        unsubscribeUserWd = null;
+      }
+    }
+
+    function startUserWithdrawalListener(uid) {
+      stopUserWithdrawalListener();
+      if (!uid) return;
+      const q = query(collection(db, "withdrawals"), where("userId", "==", uid));
+      unsubscribeUserWd = onSnapshot(q, (snap) => {
+        state.userWithdrawals = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        if (state.page === "portefeuille") render();
+      });
     }
 
     function startAdminListeners() {
@@ -854,9 +884,10 @@
 
       let usersLoaded = false;
       let txLoaded = false;
+      let wdLoaded = false;
 
       const checkDone = () => {
-        if (usersLoaded && txLoaded) {
+        if (usersLoaded && txLoaded && wdLoaded) {
           state.adminLoading = false;
           render();
         }
@@ -886,6 +917,22 @@
         (err) => {
           adminErrorMessage = `Erreur lecture "transactions" : ${err.code || err.message}`;
           txLoaded = true;
+          checkDone();
+        }
+      );
+
+      unsubscribeAdminWd = onSnapshot(
+        collection(db, "withdrawals"),
+        (snap) => {
+          state.adminWithdrawals = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+          wdLoaded = true;
+          checkDone();
+        },
+        (err) => {
+          adminErrorMessage = `Erreur lecture "withdrawals" : ${err.code || err.message}`;
+          wdLoaded = true;
           checkDone();
         }
       );
@@ -952,8 +999,8 @@
           <div style="background:#dcfce7;padding:10px;border-radius:12px;">
             <strong>Contacts WA, FB & TikTok :</strong> Packs disponibles dès 500 contacts à 7 500 FCFA pour suivre vos statuts et gagner de l'argent.
           </div>
-          <div style="background:#fffbeb;padding:10px;border-radius:12px;border:1px solid #fde68a;">
-            <strong>Activation requise :</strong> Réglez les <strong>2 150 FCFA</strong> d'activation pour débloquer l'accès complet au site.
+          <div style="background:#eff6ff;padding:10px;border-radius:12px;border:1px solid #bfdbfe;">
+            <strong>Retraits disponibles :</strong> Retirez vos gains dès ${MIN_WITHDRAWAL_FCFA.toLocaleString("fr-FR")} FCFA depuis l'onglet <strong>Portefeuille & Retrait</strong>.
           </div>
         </div>
         <div class="modal-actions">
@@ -1064,6 +1111,7 @@
             statusViews: 0
           };
         }
+        startUserWithdrawalListener(user.uid);
         if ((user.email || "").toLowerCase() === ADMIN_EMAIL) {
           state.adminUnlocked = true;
           if (state.page === "admin") {
@@ -1072,7 +1120,9 @@
         }
       } else {
         stopAdminListeners();
+        stopUserWithdrawalListener();
         state.profile = null;
+        state.userWithdrawals = [];
         state.justRegistered = false;
         state.activationSubmitted = false;
         state.adminUnlocked = false;
@@ -1130,9 +1180,40 @@
       }
     }
 
+    async function approveWithdrawal(wdId) {
+      try {
+        await updateDoc(doc(db, "withdrawals", wdId), {
+          status: "approved",
+          processedAt: serverTimestamp()
+        });
+        showToast("Retrait marqué comme payé !");
+      } catch (err) {
+        showToast("Erreur lors de la validation du retrait");
+      }
+    }
+
+    async function rejectWithdrawalAndRefund(wdId, userId, amount) {
+      try {
+        await updateDoc(doc(db, "withdrawals", wdId), {
+          status: "rejected",
+          processedAt: serverTimestamp()
+        });
+        if (userId && amount > 0) {
+          await updateDoc(doc(db, "users", userId), {
+            walletBalance: increment(amount)
+          });
+        }
+        showToast("Retrait rejeté et montant remboursé au client");
+      } catch (err) {
+        showToast("Erreur lors du rejet du retrait");
+      }
+    }
+
     window.approveTransactionAndAccount = approveTransactionAndAccount;
     window.rejectTransaction = rejectTransaction;
     window.toggleUserActivation = toggleUserActivation;
+    window.approveWithdrawal = approveWithdrawal;
+    window.rejectWithdrawalAndRefund = rejectWithdrawalAndRefund;
 
     function openAuthModal(mode = "register") {
       const isReg = mode === "register";
@@ -1289,6 +1370,104 @@
       `;
     }
 
+    function renderPortefeuillePage() {
+      const p = state.profile || {};
+      const balance = Number(p.walletBalance || 0);
+
+      if (!state.currentUser) {
+        return renderSubPage(
+          "Portefeuille & Retrait",
+          "Connectez-vous pour consulter votre solde et lancer un retrait de vos gains.",
+          `
+          <div class="page-card">
+            <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Vous devez être connecté à votre compte client pour lancer un retrait.</p>
+            <button class="btn-primary" id="walletLoginBtn">Se connecter / S'inscrire</button>
+          </div>
+          `
+        );
+      }
+
+      const historyHtml = state.userWithdrawals.length
+        ? state.userWithdrawals.map(wd => {
+            const st = wd.status || "pending";
+            const badgeClass = st === "approved" ? "status-approved" : (st === "rejected" ? "status-rejected" : "status-pending");
+            const badgeLabel = st === "approved" ? "Payé" : (st === "rejected" ? "Rejeté (remboursé)" : "En attente");
+            return `
+              <div class="admin-item">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;">
+                  <strong style="font-size:14px;">${Number(wd.amount || 0).toLocaleString("fr-FR")} FCFA</strong>
+                  <span class="status-badge ${badgeClass}">${badgeLabel}</span>
+                </div>
+                <p style="font-size:12px;color:#334155;margin-bottom:2px;">
+                  <strong>Méthode :</strong> ${wd.method || "-"}
+                </p>
+                <p style="font-size:12px;color:var(--muted);">
+                  <strong>Compte / Numéro :</strong> ${wd.accountDetails || "-"}
+                </p>
+              </div>
+            `;
+          }).join("")
+        : `<p style="font-size:13px;color:var(--muted);">Aucune demande de retrait effectuée pour le moment.</p>`;
+
+      return renderSubPage(
+        "Portefeuille & Retrait",
+        "Retirez vos gains cumulés vers Mobile Money ou portefeuille Crypto.",
+        `
+        <div class="kpi-grid">
+          <div class="kpi-box">
+            <div class="kpi-label">Solde disponible</div>
+            <div class="kpi-val" style="color:var(--green);">${balance.toLocaleString("fr-FR")} FCFA</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Total Contacts Actifs</div>
+            <div class="kpi-val">${(p.contactsCount || 0).toLocaleString("fr-FR")}</div>
+          </div>
+        </div>
+
+        <div class="page-card">
+          <h3 style="font-size:16px;font-weight:850;margin-bottom:6px;">Lancer un retrait</h3>
+          <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">
+            Montant minimum : <strong>${MIN_WITHDRAWAL_FCFA.toLocaleString("fr-FR")} FCFA</strong>. Le montant est déduit immédiatement et traité par l'administration.
+          </p>
+          <form id="withdrawForm">
+            <div class="field">
+              <label>Montant à retirer (FCFA)</label>
+              <input type="number" id="wdAmount" min="${MIN_WITHDRAWAL_FCFA}" max="${balance}" required placeholder="Ex: 5000" />
+            </div>
+            <div class="field">
+              <label>Moyen de réception</label>
+              <select id="wdMethod">
+                <option value="MTN MoMo">MTN MoMo</option>
+                <option value="Moov Money">Moov Money</option>
+                <option value="Celtiis Cash">Celtiis Cash</option>
+                <option value="Wave">Wave</option>
+                <option value="Orange Money">Orange Money</option>
+                <option value="USDT (TRC20)">USDT (TRC20)</option>
+                <option value="USDT (BEP20)">USDT (BEP20)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Numéro Mobile Money (avec indicatif) ou Adresse USDT</label>
+              <input type="text" id="wdAccount" required placeholder="Ex: +229 01 60 00 00 00" value="${p.whatsapp || ""}" />
+            </div>
+            <div class="field">
+              <label>Nom du bénéficiaire</label>
+              <input type="text" id="wdHolder" required placeholder="Ex: Koffi Mensah" value="${p.fullName || ""}" />
+            </div>
+            <button type="submit" class="btn-green" id="submitWithdrawBtn" ${balance < MIN_WITHDRAWAL_FCFA ? "disabled" : ""}>
+              ${balance < MIN_WITHDRAWAL_FCFA ? `Solde insuffisant (min. ${MIN_WITHDRAWAL_FCFA.toLocaleString("fr-FR")} FCFA)` : "Confirmer la demande de retrait"}
+            </button>
+          </form>
+        </div>
+
+        <div class="page-card">
+          <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Historique de mes retraits</h3>
+          ${historyHtml}
+        </div>
+        `
+      );
+    }
+
     function renderAdminPage() {
       const currentEmail = (state.currentUser?.email || "").toLowerCase();
       const authenticatedAsAdmin = Boolean(state.currentUser && currentEmail === ADMIN_EMAIL);
@@ -1296,7 +1475,7 @@
       if (!authenticatedAsAdmin) {
         return renderSubPage(
           "Espace Administrateur SBC",
-          "Connectez-vous avec le compte administrateur (admin@sbc.com) pour consulter les inscriptions et activer les comptes.",
+          "Connectez-vous avec le compte administrateur (admin@sbc.com) pour gérer les inscriptions et les retraits.",
           `
           <div class="page-card">
             <h3 style="font-size:16px;font-weight:850;margin-bottom:8px;">Connexion Admin (${ADMIN_EMAIL})</h3>
@@ -1317,20 +1496,56 @@
 
       if (state.adminLoading) {
         return renderSubPage(
-          "Page Admin — Activation des comptes",
-          "Chargement en temps réel des inscriptions et des transactions...",
+          "Page Admin — Activation & Retraits",
+          "Chargement en temps réel des inscriptions, paiements et retraits...",
           `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Chargement en cours...</p></div>`
         );
       }
 
       const unactivatedUsers = state.adminUsers.filter(u => !(u.accountActivated || u.pack));
       const pendingTx = state.adminTransactions.filter(t => t.status === "pending");
+      const pendingWd = state.adminWithdrawals.filter(w => w.status === "pending");
 
       const errorBannerHtml = adminErrorMessage
         ? `<div class="error-box">
              ⚠️ <strong>Problème Firestore :</strong> ${adminErrorMessage}
            </div>`
         : "";
+
+      const withdrawalsHtml = state.adminWithdrawals.length
+        ? state.adminWithdrawals.map(wd => {
+            const st = wd.status || "pending";
+            const badgeClass = st === "approved" ? "status-approved" : (st === "rejected" ? "status-rejected" : "status-pending");
+            const badgeLabel = st === "approved" ? "Payé" : (st === "rejected" ? "Rejeté" : "En attente");
+            return `
+              <div class="admin-item">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+                  <strong style="font-size:14.5px;color:var(--blue);">${Number(wd.amount || 0).toLocaleString("fr-FR")} FCFA</strong>
+                  <span class="status-badge ${badgeClass}">${badgeLabel}</span>
+                </div>
+                <p style="font-size:12px;color:#334155;margin-bottom:3px;">
+                  <strong>Client :</strong> ${wd.fullName || wd.email || wd.userId} (${wd.email || ""})
+                </p>
+                <p style="font-size:12px;color:#334155;margin-bottom:3px;">
+                  <strong>Moyen :</strong> ${wd.method || "-"} • <strong>Bénéficiaire :</strong> ${wd.holderName || "-"}
+                </p>
+                <p style="font-size:12.5px;color:var(--green);font-weight:800;margin-bottom:10px;">
+                  Numéro / Adresse : ${wd.accountDetails || "-"}
+                </p>
+                ${st === "pending" ? `
+                  <div style="display:flex;gap:8px;">
+                    <button class="btn-green" style="flex:1;" onclick="approveWithdrawal('${wd.id}')">
+                      ✓ Valider & Marquer payé
+                    </button>
+                    <button class="btn-rose" style="flex:1;" onclick="rejectWithdrawalAndRefund('${wd.id}', '${wd.userId || ""}', ${Number(wd.amount || 0)})">
+                      ✕ Rejeter (rembourser)
+                    </button>
+                  </div>
+                ` : ""}
+              </div>
+            `;
+          }).join("")
+        : `<p style="font-size:13px;color:var(--muted);">Aucune demande de retrait enregistrée pour le moment.</p>`;
 
       const unactivatedHtml = unactivatedUsers.length
         ? unactivatedUsers.map(u => `
@@ -1402,7 +1617,7 @@
                   </span>
                 </div>
                 <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">
-                  ${u.email || ""} • ${u.whatsapp || ""} • Contacts : ${(u.contactsCount || 0).toLocaleString("fr-FR")}
+                  ${u.email || ""} • Solde : ${(u.walletBalance || 0).toLocaleString("fr-FR")} FCFA • Contacts : ${(u.contactsCount || 0).toLocaleString("fr-FR")}
                 </p>
                 <button class="${active ? "btn-secondary" : "btn-primary"}" onclick="toggleUserActivation('${u.id}', ${!active})">
                   ${active ? "Désactiver le compte" : "Activer ce compte maintenant"}
@@ -1413,8 +1628,8 @@
         : `<p style="font-size:13px;color:var(--muted);">Aucun utilisateur trouvé.</p>`;
 
       return renderSubPage(
-        "Page Admin — Activation des comptes",
-        "Voyez chaque inscription (même sans paiement) en temps réel et décidez d'activer le compte ou non.",
+        "Page Admin — Activation & Retraits",
+        "Gérez les inscriptions, les paiements d'activation et les demandes de retrait des clients en temps réel.",
         `
         ${errorBannerHtml}
 
@@ -1424,21 +1639,26 @@
             <div class="kpi-val">${unactivatedUsers.length}</div>
           </div>
           <div class="kpi-box">
-            <div class="kpi-label">Paiements en attente</div>
-            <div class="kpi-val">${pendingTx.length}</div>
+            <div class="kpi-label">Retraits en attente</div>
+            <div class="kpi-val" style="color:var(--blue);">${pendingWd.length}</div>
           </div>
         </div>
 
         <div class="page-card" style="margin-bottom:12px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <h3 style="font-size:15px;font-weight:850;">Nouvelles inscriptions (payé ou non)</h3>
+            <h3 style="font-size:15px;font-weight:850;">Demandes de retrait clients (${pendingWd.length} en attente)</h3>
             <button class="btn-secondary" style="width:auto;padding:6px 10px;font-size:12px;" id="refreshAdminBtn">↻ Actualiser</button>
           </div>
+          ${withdrawalsHtml}
+        </div>
+
+        <div class="page-card" style="margin-bottom:12px;">
+          <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Nouvelles inscriptions (payé ou non)</h3>
           ${unactivatedHtml}
         </div>
 
         <div class="page-card" style="margin-bottom:12px;">
-          <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Demandes de paiement & activation</h3>
+          <h3 style="font-size:15px;font-weight:850;margin-bottom:10px;">Demandes de paiement & activation (${pendingTx.length} en attente)</h3>
           ${allTxHtml}
         </div>
 
@@ -1641,8 +1861,8 @@
       { title: "1. Inscription & Activation", text: "Dès qu'un client s'inscrit, son compte apparaît dans la Page Admin : vous pouvez l'activer ou non, qu'il ait déjà payé ou pas." },
       { title: "2. Achetez des contacts WA, FB & TikTok", text: "Démarrez dès 500 contacts à 7 500 FCFA jusqu'au Pack VIP 6 000 contacts pour faire suivre vos statuts WhatsApp, Facebook et TikTok." },
       { title: "3. Gagnez de l'argent sur vos vues", text: "Plus vos statuts et publications reçoivent de vues grâce à vos contacts, plus vous cumulez des gains." },
-      { title: "4. Packs & Options membres", text: "Passez sur Pack Classique, Ciblé ou Winner pour booster vos taux et avantages." },
-      { title: "5. Parrainage & Portefeuille", text: "Suivez vos contacts actifs, vos vues et votre solde dans Portefeuille et Mes filleuls." }
+      { title: "4. Lancez votre retrait", text: "Allez dans Portefeuille & Retrait dès 2 000 FCFA pour demander le paiement sur Mobile Money ou USDT." },
+      { title: "5. Validation Admin", text: "Toutes les demandes de retrait arrivent dans la Page Admin pour paiement et validation." }
     ];
 
     function openTutorial(stepIndex = 0) {
@@ -1721,9 +1941,9 @@
             <div class="kpi-label">Total Contacts Actifs</div>
             <div class="kpi-val">${totalContacts.toLocaleString("fr-FR")}</div>
           </div>
-          <div class="kpi-box">
-            <div class="kpi-label">Solde Portefeuille</div>
-            <div class="kpi-val">${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</div>
+          <div class="kpi-box" style="cursor:pointer;" onclick="navigateTo('portefeuille')">
+            <div class="kpi-label">Solde (Retirer →)</div>
+            <div class="kpi-val" style="color:var(--green);">${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</div>
           </div>
         </div>
 
@@ -1938,6 +2158,9 @@
         case "contacts":
           html = renderContactsPage();
           break;
+        case "portefeuille":
+          html = renderPortefeuillePage();
+          break;
         case "abonnement":
           html = renderAbonnement();
           break;
@@ -1954,12 +2177,14 @@
               <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">Démarrage rapide</h3>
               <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
                 ${state.currentUser
-                  ? "Achetez des contacts WhatsApp, Facebook ou TikTok dès 500 contacts à 7 500 FCFA pour booster les vues de vos statuts."
+                  ? "Achetez des contacts WhatsApp, Facebook ou TikTok dès 500 contacts à 7 500 FCFA ou retirez vos gains depuis votre portefeuille."
                   : "Créez votre compte et activez-le (2 150 FCFA) pour accéder au site et acheter des contacts."}
               </p>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn-primary" style="flex:1;" onclick="navigateTo('contacts')">Acheter des contacts</button>
-                ${!state.currentUser ? `<button class="btn-secondary" style="flex:1;" id="homeAuthBtn">Connexion / Inscription</button>` : ""}
+                ${state.currentUser
+                  ? `<button class="btn-green" style="flex:1;" onclick="navigateTo('portefeuille')">Lancer un retrait</button>`
+                  : `<button class="btn-secondary" style="flex:1;" id="homeAuthBtn">Connexion / Inscription</button>`}
               </div>
             </div>
             `
@@ -1991,7 +2216,7 @@
             `
             <div class="page-card"><strong>Module 1 :</strong> Publier des statuts WhatsApp, Facebook et TikTok qui retiennent l'attention.</div>
             <div class="page-card"><strong>Module 2 :</strong> Exploiter vos packs de contacts pour multiplier les vues quotidiennes.</div>
-            <div class="page-card"><strong>Module 3 :</strong> Suivre vos gains et développer votre réseau de parrainage.</div>
+            <div class="page-card"><strong>Module 3 :</strong> Suivre vos gains et retirer votre argent via Mobile Money ou USDT.</div>
             `
           );
           break;
@@ -2064,18 +2289,6 @@
             `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Relancez vos contacts WhatsApp, Facebook et TikTok à chaque nouvelle publication de statut.</p></div>`
           );
           break;
-        case "portefeuille":
-          html = renderSubPage(
-            "Portefeuille",
-            "Consultez vos soldes, vos contacts actifs et vos gains liés aux vues.",
-            `
-            <div class="kpi-grid">
-              <div class="kpi-box"><div class="kpi-label">Solde disponible</div><div class="kpi-val">${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</div></div>
-              <div class="kpi-box"><div class="kpi-label">Total Contacts</div><div class="kpi-val">${(p.contactsCount || 0).toLocaleString("fr-FR")}</div></div>
-            </div>
-            `
-          );
-          break;
         case "solde-activation":
           html = renderSubPage(
             "Solde d'activation",
@@ -2097,9 +2310,13 @@
                 <p style="font-size:13.5px;margin-bottom:8px;"><strong>Nom :</strong> ${p.fullName || "Membre SBC"}</p>
                 <p style="font-size:13.5px;margin-bottom:8px;"><strong>Email :</strong> ${state.currentUser.email}</p>
                 <p style="font-size:13.5px;margin-bottom:8px;"><strong>Pays :</strong> ${p.country || "Bénin"}</p>
+                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Solde disponible :</strong> ${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</p>
                 <p style="font-size:13.5px;margin-bottom:8px;"><strong>Contacts actifs :</strong> ${(p.contactsCount || 0).toLocaleString("fr-FR")}</p>
                 <p style="font-size:13.5px;margin-bottom:14px;"><strong>Code parrain :</strong> ${p.refCode || "-"}</p>
-                <button class="btn-secondary" id="logoutBtn">Se déconnecter</button>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <button class="btn-green" onclick="navigateTo('portefeuille')">Lancer un retrait</button>
+                  <button class="btn-secondary" id="logoutBtn">Se déconnecter</button>
+                </div>
               </div>
             ` : `
               <div class="page-card">
@@ -2115,6 +2332,67 @@
 
       appRoot.innerHTML = html;
 
+      // Formulaire de retrait client
+      const withdrawForm = document.getElementById("withdrawForm");
+      if (withdrawForm) {
+        withdrawForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          if (!state.currentUser) return;
+          const amount = parseInt(document.getElementById("wdAmount").value, 10) || 0;
+          const currentBalance = Number(state.profile?.walletBalance || 0);
+
+          if (amount < MIN_WITHDRAWAL_FCFA) {
+            showToast(`Montant minimum : ${MIN_WITHDRAWAL_FCFA.toLocaleString("fr-FR")} FCFA`);
+            return;
+          }
+          if (amount > currentBalance) {
+            showToast("Montant supérieur à votre solde disponible");
+            return;
+          }
+
+          const btn = document.getElementById("submitWithdrawBtn");
+          btn.disabled = true;
+          btn.textContent = "Envoi de la demande...";
+
+          try {
+            const method = document.getElementById("wdMethod").value;
+            const accountDetails = document.getElementById("wdAccount").value.trim();
+            const holderName = document.getElementById("wdHolder").value.trim();
+
+            await addDoc(collection(db, "withdrawals"), {
+              userId: state.currentUser.uid,
+              email: state.currentUser.email,
+              fullName: state.profile?.fullName || "",
+              amount,
+              method,
+              accountDetails,
+              holderName,
+              status: "pending",
+              createdAt: serverTimestamp()
+            });
+
+            await updateDoc(doc(db, "users", state.currentUser.uid), {
+              walletBalance: increment(-amount)
+            });
+
+            if (state.profile) {
+              state.profile.walletBalance = Math.max(0, currentBalance - amount);
+            }
+
+            showToast(`Demande de retrait de ${amount.toLocaleString("fr-FR")} FCFA envoyée !`);
+            render();
+          } catch (err) {
+            showToast("Erreur lors de l'envoi de la demande de retrait");
+            btn.disabled = false;
+            btn.textContent = "Confirmer la demande de retrait";
+          }
+        });
+      }
+
+      const walletLoginBtn = document.getElementById("walletLoginBtn");
+      if (walletLoginBtn) walletLoginBtn.addEventListener("click", () => openAuthModal("login"));
+
+      // Connexion Admin
       const adminUnlockForm = document.getElementById("adminUnlockForm");
       if (adminUnlockForm) {
         adminUnlockForm.addEventListener("submit", async (e) => {
@@ -2251,6 +2529,7 @@
       if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
           stopAdminListeners();
+          stopUserWithdrawalListener();
           await signOut(auth);
           showToast("Déconnecté");
         });
