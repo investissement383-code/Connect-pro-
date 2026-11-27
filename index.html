@@ -123,6 +123,29 @@
       box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
     }
 
+    /* Phone prefix Congo */
+    .phone-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .phone-prefix-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 10px 12px;
+      border-radius: 11px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      font-size: 13.5px;
+      font-weight: 800;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .phone-input-wrap input {
+      flex: 1;
+    }
+
     /* Activation Gate Card */
     .gate-card {
       background: var(--card);
@@ -666,7 +689,7 @@
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 
-  <!-- Auth / Pack / Contact / Tutorial Modal -->
+  <!-- Modal -->
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal-card" id="modalContent"></div>
   </div>
@@ -903,6 +926,14 @@
         : `${item.usd.toFixed(2).replace(".", ",")} $`;
     }
 
+    function formatCongoWhatsapp(rawPhone) {
+      const cleaned = rawPhone.trim();
+      if (!cleaned) return "";
+      if (cleaned.startsWith("+242")) return cleaned;
+      const digitsOnly = cleaned.replace(/^0+/, "");
+      return `+242 ${digitsOnly}`;
+    }
+
     function stopAdminListeners() {
       if (unsubscribeAdminUsers) {
         unsubscribeAdminUsers();
@@ -1130,7 +1161,7 @@
           email: user.email || "",
           fullName: extra.fullName || (isAdminEmail ? "Administrateur SBC" : (user.email?.split("@")[0] || "Membre SBC")),
           whatsapp: extra.whatsapp || "",
-          country: extra.country || "Bénin",
+          country: extra.country || "Congo",
           refCode: generateRefCode(extra.fullName || "SBC"),
           referredBy: extra.referredBy || "",
           role: isAdminEmail ? "admin" : "user",
@@ -1304,16 +1335,19 @@
             ${isReg ? `
               <div class="field">
                 <label>Nom complet</label>
-                <input type="text" id="authName" required placeholder="Ex: Koffi Mensah" />
+                <input type="text" id="authName" required placeholder="Ex: Gloire Mavoungou" />
               </div>
               <div class="field">
-                <label>Numéro WhatsApp</label>
-                <input type="tel" id="authWhatsapp" required placeholder="+229 01 60 00 00 00" />
+                <label>Numéro WhatsApp (Congo +242)</label>
+                <div class="phone-input-wrap">
+                  <span class="phone-prefix-box">🇨🇬 +242</span>
+                  <input type="tel" id="authWhatsapp" required placeholder="06 500 00 00" />
+                </div>
               </div>
               <div class="field">
                 <label>Pays</label>
                 <select id="authCountry">
-                  <option value="Bénin">Bénin</option>
+                  <option value="Congo" selected>Congo (+242)</option>
                   <option value="Côte d'Ivoire">Côte d'Ivoire</option>
                   <option value="Togo">Togo</option>
                   <option value="Sénégal">Sénégal</option>
@@ -1391,7 +1425,7 @@
           try {
             if (isReg) {
               const fullName = document.getElementById("authName").value.trim();
-              const whatsapp = document.getElementById("authWhatsapp").value.trim();
+              const whatsapp = formatCongoWhatsapp(document.getElementById("authWhatsapp").value);
               const country = document.getElementById("authCountry").value;
               const referredBy = document.getElementById("authRef").value.trim().toUpperCase();
               const cred = await createUserWithEmailAndPassword(auth, email, pass);
@@ -1452,6 +1486,7 @@
               <select id="actPayMethod">
                 <option value="Sebpay (Mobile Money)">Sebpay (Mobile Money)</option>
                 <option value="MTN MoMo">MTN MoMo</option>
+                <option value="Airtel Money">Airtel Money</option>
                 <option value="Moov Money">Moov Money</option>
                 <option value="Wave">Wave</option>
                 <option value="Orange Money">Orange Money</option>
@@ -1528,8 +1563,8 @@
               <label>Moyen de réception</label>
               <select id="wdMethod">
                 <option value="MTN MoMo">MTN MoMo</option>
+                <option value="Airtel Money">Airtel Money</option>
                 <option value="Moov Money">Moov Money</option>
-                <option value="Celtiis Cash">Celtiis Cash</option>
                 <option value="Wave">Wave</option>
                 <option value="Orange Money">Orange Money</option>
                 <option value="USDT (TRC20)">USDT (TRC20)</option>
@@ -1537,12 +1572,12 @@
               </select>
             </div>
             <div class="field">
-              <label>Numéro Mobile Money (avec indicatif) ou Adresse USDT</label>
-              <input type="text" id="wdAccount" required placeholder="Ex: +229 01 60 00 00 00" value="${p.whatsapp || ""}" />
+              <label>Numéro Mobile Money (avec indicatif +242) ou Adresse USDT</label>
+              <input type="text" id="wdAccount" required placeholder="Ex: +242 06 500 00 00" value="${p.whatsapp || ""}" />
             </div>
             <div class="field">
               <label>Nom du bénéficiaire</label>
-              <input type="text" id="wdHolder" required placeholder="Ex: Koffi Mensah" value="${p.fullName || ""}" />
+              <input type="text" id="wdHolder" required placeholder="Ex: Gloire Mavoungou" value="${p.fullName || ""}" />
             </div>
             <button type="submit" class="btn-green" id="submitWithdrawBtn" ${balance < MIN_WITHDRAWAL_FCFA ? "disabled" : ""}>
               ${balance < MIN_WITHDRAWAL_FCFA ? `Solde insuffisant (min. ${MIN_WITHDRAWAL_FCFA.toLocaleString("fr-FR")} FCFA)` : "Confirmer la demande de retrait"}
@@ -1781,14 +1816,14 @@
 
         <form id="contactOrderForm">
           <div class="field">
-            <label>Votre numéro WhatsApp / lien profil Facebook ou TikTok</label>
-            <input type="text" id="targetHandle" required placeholder="Ex: +229... ou @monprofil_tiktok" />
+            <label>Votre numéro WhatsApp (+242) / lien profil Facebook ou TikTok</label>
+            <input type="text" id="targetHandle" required placeholder="Ex: +242 06 500 00 00 ou @monprofil_tiktok" />
           </div>
           <div class="field">
             <label>Moyen de paiement</label>
             <select id="contactPayMethod">
               ${state.currency === "FCFA"
-                ? `<option value="Sebpay (Mobile Money)">Sebpay (Mobile Money)</option><option value="MTN MoMo">MTN MoMo</option><option value="Moov Money">Moov Money</option><option value="Wave">Wave</option><option value="Orange Money">Orange Money</option>`
+                ? `<option value="Sebpay (Mobile Money)">Sebpay (Mobile Money)</option><option value="MTN MoMo">MTN MoMo</option><option value="Airtel Money">Airtel Money</option><option value="Moov Money">Moov Money</option><option value="Wave">Wave</option><option value="Orange Money">Orange Money</option>`
                 : `<option value="Sebpay">Sebpay</option><option value="USDT (TRC20)">USDT (TRC20)</option><option value="USDT (BEP20)">USDT (BEP20)</option>`
               }
             </select>
@@ -1895,7 +1930,7 @@
             <label>Moyen de paiement utilisé</label>
             <select id="payMethod">
               ${state.currency === "FCFA"
-                ? `<option value="Sebpay (Mobile Money)">Sebpay (Mobile Money)</option><option value="MTN MoMo">MTN MoMo</option><option value="Moov Money">Moov Money</option><option value="Wave">Wave</option><option value="Orange Money">Orange Money</option>`
+                ? `<option value="Sebpay (Mobile Money)">Sebpay (Mobile Money)</option><option value="MTN MoMo">MTN MoMo</option><option value="Airtel Money">Airtel Money</option><option value="Moov Money">Moov Money</option><option value="Wave">Wave</option><option value="Orange Money">Orange Money</option>`
                 : `<option value="Sebpay">Sebpay</option><option value="USDT (TRC20)">USDT (TRC20)</option><option value="USDT (BEP20)">USDT (BEP20)</option>`
               }
             </select>
@@ -1938,7 +1973,7 @@
     }
 
     const TUTORIAL_STEPS = [
-      { title: "1. Inscription & Connexion", text: "Dès l'ouverture du lien, inscrivez-vous ou connectez-vous à votre compte SBC." },
+      { title: "1. Inscription & Connexion", text: "Dès l'ouverture du lien, inscrivez-vous avec votre numéro WhatsApp Congo (+242) ou connectez-vous à votre compte SBC." },
       { title: "2. Activation du compte", text: "Activez votre compte (2 150 FCFA) pour accéder à l'ensemble des services." },
       { title: "3. Achetez des contacts WA, FB & TikTok", text: "Démarrez dès 500 contacts à 7 500 FCFA jusqu'au Pack VIP 6 000 contacts pour faire suivre vos statuts." },
       { title: "4. Gagnez de l'argent sur vos vues", text: "Enregistrez les vues de vos statuts et cumulez des gains dans votre portefeuille." },
@@ -2207,14 +2242,12 @@
     }
 
     function render() {
-      // 1. Si l'utilisateur n'est pas connecté : afficher directement la page Inscription / Connexion (sauf accès Page Admin)
       if (!state.currentUser && state.page !== "admin") {
         appRoot.innerHTML = renderDirectAuthScreen();
         bindDirectAuthEvents();
         return;
       }
 
-      // 2. Si connecté mais compte non activé : afficher l'écran d'activation 2 150 FCFA (sauf accès Page Admin)
       if (state.currentUser && !isAccountActivated() && !isAdminUser() && state.page !== "admin") {
         appRoot.innerHTML = renderActivationGate();
 
@@ -2420,7 +2453,8 @@
             <div class="page-card">
               <p style="font-size:13.5px;margin-bottom:8px;"><strong>Nom :</strong> ${p.fullName || "Membre SBC"}</p>
               <p style="font-size:13.5px;margin-bottom:8px;"><strong>Email :</strong> ${state.currentUser?.email || ""}</p>
-              <p style="font-size:13.5px;margin-bottom:8px;"><strong>Pays :</strong> ${p.country || "Bénin"}</p>
+              <p style="font-size:13.5px;margin-bottom:8px;"><strong>WhatsApp :</strong> ${p.whatsapp || "-"}</p>
+              <p style="font-size:13.5px;margin-bottom:8px;"><strong>Pays :</strong> ${p.country || "Congo"}</p>
               <p style="font-size:13.5px;margin-bottom:8px;"><strong>Solde disponible :</strong> ${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</p>
               <p style="font-size:13.5px;margin-bottom:8px;"><strong>Contacts actifs :</strong> ${(p.contactsCount || 0).toLocaleString("fr-FR")}</p>
               <p style="font-size:13.5px;margin-bottom:14px;"><strong>Code parrain :</strong> ${p.refCode || "-"}</p>
@@ -2438,7 +2472,6 @@
 
       appRoot.innerHTML = html;
 
-      // Formulaire de retrait client
       const withdrawForm = document.getElementById("withdrawForm");
       if (withdrawForm) {
         withdrawForm.addEventListener("submit", async (e) => {
@@ -2585,7 +2618,7 @@
               </div>
               <div class="field">
                 <label>Lien ou contact WhatsApp</label>
-                <input type="text" required placeholder="https://... ou +229..." />
+                <input type="text" required placeholder="https://... ou +242..." />
               </div>
               <button type="submit" class="btn-green">Envoyer la demande</button>
             </form>
