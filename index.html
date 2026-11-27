@@ -63,6 +63,66 @@
     /* Container */
     .container { max-width: 520px; margin: 0 auto; padding: 14px; }
 
+    /* Auth Landing Card */
+    .auth-landing-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: var(--shadow);
+      margin-top: 6px;
+    }
+    .auth-hero-top {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .auth-pill {
+      display: inline-block;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .auth-title {
+      font-size: 21px;
+      font-weight: 900;
+      line-height: 1.25;
+      margin-bottom: 6px;
+    }
+    .auth-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .auth-mode-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background: #e2e8f0;
+      padding: 4px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+    }
+    .auth-tab-btn {
+      border: none;
+      border-radius: 11px;
+      padding: 10px 12px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: 0.2s;
+    }
+    .auth-tab-btn.active {
+      background: #ffffff;
+      color: var(--ink);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
     /* Activation Gate Card */
     .gate-card {
       background: var(--card);
@@ -792,6 +852,7 @@
 
     const state = {
       page: "contacts",
+      authTab: "register",
       currency: "FCFA",
       currentUser: null,
       profile: null,
@@ -943,10 +1004,6 @@
     }
 
     function openDrawer() {
-      if (state.currentUser && !isAccountActivated() && !isAdminUser()) {
-        showToast("Activez votre compte (2 150 FCFA) pour accéder au menu");
-        return;
-      }
       drawer.classList.add("open");
       drawerBackdrop.classList.add("open");
     }
@@ -980,16 +1037,17 @@
     });
 
     document.getElementById("profileTopBtn").addEventListener("click", () => {
-      if (state.currentUser) {
-        if (!isAccountActivated() && !isAdminUser()) {
-          showToast("Activez d'abord votre compte avec 2 150 FCFA");
-          render();
-          return;
-        }
-        navigateTo("profil");
-      } else {
-        openAuthModal("register");
+      if (!state.currentUser) {
+        state.authTab = "login";
+        render();
+        return;
       }
+      if (!isAccountActivated() && !isAdminUser()) {
+        showToast("Activez d'abord votre compte avec 2 150 FCFA");
+        render();
+        return;
+      }
+      navigateTo("profil");
     });
 
     document.getElementById("notifBtn").addEventListener("click", () => {
@@ -1026,6 +1084,10 @@
     });
 
     function navigateTo(page) {
+      if (!state.currentUser && page !== "admin") {
+        render();
+        return;
+      }
       if (state.currentUser && !isAccountActivated() && !isAdminUser() && page !== "admin") {
         showToast("Veuillez payer les 2 150 FCFA pour activer votre compte d'abord");
         render();
@@ -1215,100 +1277,141 @@
     window.approveWithdrawal = approveWithdrawal;
     window.rejectWithdrawalAndRefund = rejectWithdrawalAndRefund;
 
-    function openAuthModal(mode = "register") {
-      const isReg = mode === "register";
-      openModal(`
-        <h3 style="font-size:18px;font-weight:850;margin-bottom:4px;">
-          ${isReg ? "Créer un compte SBC" : "Connexion à SBC"}
-        </h3>
-        <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px;">
-          ${isReg ? "Après inscription, activez votre compte (2 150 FCFA) puis achetez vos contacts WhatsApp, Facebook et TikTok." : "Connectez-vous à votre compte Sniper Business Center."}
-        </p>
-        <form id="authForm">
-          ${isReg ? `
-            <div class="field">
-              <label>Nom complet</label>
-              <input type="text" id="authName" required placeholder="Ex: Koffi Mensah" />
-            </div>
-            <div class="field">
-              <label>Numéro WhatsApp</label>
-              <input type="tel" id="authWhatsapp" required placeholder="+229 01 60 00 00 00" />
-            </div>
-            <div class="field">
-              <label>Pays</label>
-              <select id="authCountry">
-                <option value="Bénin">Bénin</option>
-                <option value="Côte d'Ivoire">Côte d'Ivoire</option>
-                <option value="Togo">Togo</option>
-                <option value="Sénégal">Sénégal</option>
-                <option value="Cameroun">Cameroun</option>
-                <option value="Burkina Faso">Burkina Faso</option>
-                <option value="Autre">Autre</option>
-              </select>
-            </div>
-          ` : ""}
-          <div class="field">
-            <label>Adresse e-mail</label>
-            <input type="email" id="authEmail" required placeholder="exemple@email.com" />
+    function renderDirectAuthScreen() {
+      const isReg = state.authTab === "register";
+      return `
+        <section class="auth-landing-card">
+          <div class="auth-hero-top">
+            <span class="auth-pill">SNIPER BUSINESS CENTER</span>
+            <h1 class="auth-title">${isReg ? "Créer votre compte" : "Connectez-vous"}</h1>
+            <p class="auth-sub">
+              ${isReg
+                ? "Inscrivez-vous en quelques secondes pour activer votre compte et accéder à vos contacts WhatsApp, Facebook & TikTok."
+                : "Entrez vos identifiants pour accéder à votre espace membre SBC."}
+            </p>
           </div>
-          <div class="field">
-            <label>Mot de passe (6 caractères min.)</label>
-            <input type="password" id="authPass" required minlength="6" placeholder="••••••••" />
+
+          <div class="auth-mode-tabs">
+            <button type="button" class="auth-tab-btn ${isReg ? "active" : ""}" id="tabRegisterBtn">
+              Inscription
+            </button>
+            <button type="button" class="auth-tab-btn ${!isReg ? "active" : ""}" id="tabLoginBtn">
+              Connexion
+            </button>
           </div>
-          ${isReg ? `
+
+          <form id="directAuthForm">
+            ${isReg ? `
+              <div class="field">
+                <label>Nom complet</label>
+                <input type="text" id="authName" required placeholder="Ex: Koffi Mensah" />
+              </div>
+              <div class="field">
+                <label>Numéro WhatsApp</label>
+                <input type="tel" id="authWhatsapp" required placeholder="+229 01 60 00 00 00" />
+              </div>
+              <div class="field">
+                <label>Pays</label>
+                <select id="authCountry">
+                  <option value="Bénin">Bénin</option>
+                  <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                  <option value="Togo">Togo</option>
+                  <option value="Sénégal">Sénégal</option>
+                  <option value="Cameroun">Cameroun</option>
+                  <option value="Burkina Faso">Burkina Faso</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+            ` : ""}
             <div class="field">
-              <label>Code parrain (optionnel)</label>
-              <input type="text" id="authRef" placeholder="Ex: SBC1234" />
+              <label>Adresse e-mail</label>
+              <input type="email" id="authEmail" required placeholder="exemple@email.com" />
             </div>
-          ` : ""}
-          <button type="submit" class="btn-primary" id="authSubmitBtn">
-            ${isReg ? "S'inscrire maintenant" : "Se connecter"}
-          </button>
-        </form>
-        <div style="margin-top:12px;text-align:center;font-size:12.5px;color:var(--muted);">
-          ${isReg
-            ? `Déjà inscrit ? <a href="#" id="switchAuthMode" style="color:var(--blue);font-weight:700;">Se connecter</a>`
-            : `Pas encore de compte ? <a href="#" id="switchAuthMode" style="color:var(--blue);font-weight:700;">Créer un compte</a>`
-          }
-        </div>
-      `);
+            <div class="field">
+              <label>Mot de passe ${isReg ? "(6 caractères min.)" : ""}</label>
+              <input type="password" id="authPass" required minlength="6" placeholder="••••••••" />
+            </div>
+            ${isReg ? `
+              <div class="field">
+                <label>Code parrain (optionnel)</label>
+                <input type="text" id="authRef" placeholder="Ex: SBC1234" />
+              </div>
+            ` : ""}
+            <button type="submit" class="btn-primary" id="directAuthSubmitBtn">
+              ${isReg ? "Créer mon compte" : "Se connecter"}
+            </button>
+          </form>
 
-      document.getElementById("switchAuthMode").addEventListener("click", (e) => {
-        e.preventDefault();
-        openAuthModal(isReg ? "login" : "register");
-      });
+          <div style="margin-top:14px;text-align:center;font-size:13px;color:var(--muted);">
+            ${isReg
+              ? `Vous avez déjà un compte ? <a href="#" id="inlineSwitchMode" style="color:var(--blue);font-weight:800;">Se connecter</a>`
+              : `Nouveau sur SBC ? <a href="#" id="inlineSwitchMode" style="color:var(--blue);font-weight:800;">Créer un compte</a>`
+            }
+          </div>
+        </section>
+      `;
+    }
 
-      document.getElementById("authForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById("authSubmitBtn");
-        btn.disabled = true;
-        btn.textContent = "Traitement...";
-        const email = document.getElementById("authEmail").value.trim();
-        const pass = document.getElementById("authPass").value;
-        try {
-          if (isReg) {
-            const fullName = document.getElementById("authName").value.trim();
-            const whatsapp = document.getElementById("authWhatsapp").value.trim();
-            const country = document.getElementById("authCountry").value;
-            const referredBy = document.getElementById("authRef").value.trim().toUpperCase();
-            const cred = await createUserWithEmailAndPassword(auth, email, pass);
-            await ensureUserProfile(cred.user, { fullName, whatsapp, country, referredBy });
-            state.justRegistered = true;
-            state.activationSubmitted = false;
-            showToast("Inscription réussie ! Visible dans la page Admin.");
-          } else {
-            await signInWithEmailAndPassword(auth, email, pass);
-            state.justRegistered = false;
-            showToast("Connexion réussie !");
-          }
-          closeModal();
+    function bindDirectAuthEvents() {
+      const tabReg = document.getElementById("tabRegisterBtn");
+      const tabLog = document.getElementById("tabLoginBtn");
+      const switchLink = document.getElementById("inlineSwitchMode");
+      const form = document.getElementById("directAuthForm");
+
+      if (tabReg) {
+        tabReg.addEventListener("click", () => {
+          state.authTab = "register";
           render();
-        } catch (err) {
-          showToast(err.message || "Erreur d'authentification");
-          btn.disabled = false;
-          btn.textContent = isReg ? "S'inscrire maintenant" : "Se connecter";
-        }
-      });
+        });
+      }
+      if (tabLog) {
+        tabLog.addEventListener("click", () => {
+          state.authTab = "login";
+          render();
+        });
+      }
+      if (switchLink) {
+        switchLink.addEventListener("click", (e) => {
+          e.preventDefault();
+          state.authTab = state.authTab === "register" ? "login" : "register";
+          render();
+        });
+      }
+
+      if (form) {
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const btn = document.getElementById("directAuthSubmitBtn");
+          btn.disabled = true;
+          btn.textContent = "Traitement...";
+          const email = document.getElementById("authEmail").value.trim();
+          const pass = document.getElementById("authPass").value;
+          const isReg = state.authTab === "register";
+
+          try {
+            if (isReg) {
+              const fullName = document.getElementById("authName").value.trim();
+              const whatsapp = document.getElementById("authWhatsapp").value.trim();
+              const country = document.getElementById("authCountry").value;
+              const referredBy = document.getElementById("authRef").value.trim().toUpperCase();
+              const cred = await createUserWithEmailAndPassword(auth, email, pass);
+              await ensureUserProfile(cred.user, { fullName, whatsapp, country, referredBy });
+              state.justRegistered = true;
+              state.activationSubmitted = false;
+              showToast("Inscription réussie !");
+            } else {
+              await signInWithEmailAndPassword(auth, email, pass);
+              state.justRegistered = false;
+              showToast("Connexion réussie !");
+            }
+            render();
+          } catch (err) {
+            showToast(err.message || "Erreur d'authentification");
+            btn.disabled = false;
+            btn.textContent = isReg ? "Créer mon compte" : "Se connecter";
+          }
+        });
+      }
     }
 
     function renderActivationGate() {
@@ -1373,19 +1476,6 @@
     function renderPortefeuillePage() {
       const p = state.profile || {};
       const balance = Number(p.walletBalance || 0);
-
-      if (!state.currentUser) {
-        return renderSubPage(
-          "Portefeuille & Retrait",
-          "Connectez-vous pour consulter votre solde et lancer un retrait de vos gains.",
-          `
-          <div class="page-card">
-            <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Vous devez être connecté à votre compte client pour lancer un retrait.</p>
-            <button class="btn-primary" id="walletLoginBtn">Se connecter / S'inscrire</button>
-          </div>
-          `
-        );
-      }
 
       const historyHtml = state.userWithdrawals.length
         ? state.userWithdrawals.map(wd => {
@@ -1675,11 +1765,6 @@
     }
 
     function openContactPackModal(cPack) {
-      if (!state.currentUser) {
-        showToast("Connectez-vous ou inscrivez-vous pour acheter des contacts");
-        openAuthModal("register");
-        return;
-      }
       openModal(`
         <h3 style="font-size:18px;font-weight:850;margin-bottom:4px;">${cPack.name}</h3>
         <div style="font-size:20px;font-weight:900;color:var(--blue);margin-bottom:10px;">
@@ -1791,11 +1876,6 @@
     }
 
     function openPackModal(pack) {
-      if (!state.currentUser) {
-        showToast("Connectez-vous ou inscrivez-vous pour choisir un pack");
-        openAuthModal("register");
-        return;
-      }
       openModal(`
         <h3 style="font-size:18px;font-weight:850;margin-bottom:4px;">${pack.name}</h3>
         <div style="font-size:20px;font-weight:900;color:var(--blue);margin-bottom:10px;">
@@ -1858,11 +1938,11 @@
     }
 
     const TUTORIAL_STEPS = [
-      { title: "1. Inscription & Activation", text: "Dès qu'un client s'inscrit, son compte apparaît dans la Page Admin : vous pouvez l'activer ou non, qu'il ait déjà payé ou pas." },
-      { title: "2. Achetez des contacts WA, FB & TikTok", text: "Démarrez dès 500 contacts à 7 500 FCFA jusqu'au Pack VIP 6 000 contacts pour faire suivre vos statuts WhatsApp, Facebook et TikTok." },
-      { title: "3. Gagnez de l'argent sur vos vues", text: "Plus vos statuts et publications reçoivent de vues grâce à vos contacts, plus vous cumulez des gains." },
-      { title: "4. Lancez votre retrait", text: "Allez dans Portefeuille & Retrait dès 2 000 FCFA pour demander le paiement sur Mobile Money ou USDT." },
-      { title: "5. Validation Admin", text: "Toutes les demandes de retrait arrivent dans la Page Admin pour paiement et validation." }
+      { title: "1. Inscription & Connexion", text: "Dès l'ouverture du lien, inscrivez-vous ou connectez-vous à votre compte SBC." },
+      { title: "2. Activation du compte", text: "Activez votre compte (2 150 FCFA) pour accéder à l'ensemble des services." },
+      { title: "3. Achetez des contacts WA, FB & TikTok", text: "Démarrez dès 500 contacts à 7 500 FCFA jusqu'au Pack VIP 6 000 contacts pour faire suivre vos statuts." },
+      { title: "4. Gagnez de l'argent sur vos vues", text: "Enregistrez les vues de vos statuts et cumulez des gains dans votre portefeuille." },
+      { title: "5. Lancez votre retrait", text: "Allez dans Portefeuille & Retrait dès 2 000 FCFA pour demander votre paiement." }
     ];
 
     function openTutorial(stepIndex = 0) {
@@ -1925,7 +2005,7 @@
         <div class="sub-top-bar">
           <button class="back-pill" onclick="navigateTo('accueil')">← Accueil</button>
           <span class="user-chip">
-            ${state.currentUser ? (p.fullName || state.currentUser.email) : "Invité"}
+            ${p.fullName || state.currentUser?.email || "Membre"}
           </span>
         </div>
 
@@ -2014,7 +2094,7 @@
         <div class="sub-top-bar">
           <button class="back-pill" onclick="navigateTo('contacts')">← Contacts WA/FB/TikTok</button>
           <span class="user-chip">
-            ${state.currentUser ? (state.profile?.fullName || state.currentUser.email) : "Invité"}
+            ${state.profile?.fullName || state.currentUser?.email || "Membre"}
           </span>
         </div>
 
@@ -2089,7 +2169,7 @@
       return `
         <div class="sub-top-bar">
           <button class="back-pill" onclick="navigateTo('contacts')">← Contacts WA/FB/TikTok</button>
-          <span class="user-chip">${state.currentUser ? "Connecté" : "Mode découverte"}</span>
+          <span class="user-chip">${state.currentUser ? "Connecté" : "Admin"}</span>
         </div>
         <div class="hero-card">
           <h1 class="hero-title">${title}</h1>
@@ -2099,7 +2179,42 @@
       `;
     }
 
+    function bindAdminUnlockEvent() {
+      const adminUnlockForm = document.getElementById("adminUnlockForm");
+      if (adminUnlockForm) {
+        adminUnlockForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const password = document.getElementById("adminCodeInput").value.trim();
+          const btn = document.getElementById("adminUnlockBtn");
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Connexion admin...";
+          }
+          try {
+            await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+            state.adminUnlocked = true;
+            showToast("Connecté en tant qu'administrateur");
+            await loadAdminData();
+          } catch (err) {
+            showToast("Identifiants admin invalides ou compte admin inexistant");
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = "Se connecter & ouvrir la Page Admin";
+            }
+          }
+        });
+      }
+    }
+
     function render() {
+      // 1. Si l'utilisateur n'est pas connecté : afficher directement la page Inscription / Connexion (sauf accès Page Admin)
+      if (!state.currentUser && state.page !== "admin") {
+        appRoot.innerHTML = renderDirectAuthScreen();
+        bindDirectAuthEvents();
+        return;
+      }
+
+      // 2. Si connecté mais compte non activé : afficher l'écran d'activation 2 150 FCFA (sauf accès Page Admin)
       if (state.currentUser && !isAccountActivated() && !isAdminUser() && state.page !== "admin") {
         appRoot.innerHTML = renderActivationGate();
 
@@ -2176,15 +2291,11 @@
             <div class="page-card">
               <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">Démarrage rapide</h3>
               <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
-                ${state.currentUser
-                  ? "Achetez des contacts WhatsApp, Facebook ou TikTok dès 500 contacts à 7 500 FCFA ou retirez vos gains depuis votre portefeuille."
-                  : "Créez votre compte et activez-le (2 150 FCFA) pour accéder au site et acheter des contacts."}
+                Achetez des contacts WhatsApp, Facebook ou TikTok dès 500 contacts à 7 500 FCFA ou retirez vos gains depuis votre portefeuille.
               </p>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn-primary" style="flex:1;" onclick="navigateTo('contacts')">Acheter des contacts</button>
-                ${state.currentUser
-                  ? `<button class="btn-green" style="flex:1;" onclick="navigateTo('portefeuille')">Lancer un retrait</button>`
-                  : `<button class="btn-secondary" style="flex:1;" id="homeAuthBtn">Connexion / Inscription</button>`}
+                <button class="btn-green" style="flex:1;" onclick="navigateTo('portefeuille')">Lancer un retrait</button>
               </div>
             </div>
             `
@@ -2279,7 +2390,7 @@
           html = renderSubPage(
             "Messages",
             "Messagerie et discussions de la plateforme.",
-            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Aucune nouvelle conversation pour le moment. Connectez-vous pour échanger avec vos contacts.</p></div>`
+            `<div class="page-card"><p style="font-size:13px;color:var(--muted);">Aucune nouvelle conversation pour le moment.</p></div>`
           );
           break;
         case "relance":
@@ -2305,24 +2416,19 @@
           html = renderSubPage(
             "Mon profil",
             "Informations de votre compte Sniper Business Center.",
-            state.currentUser ? `
-              <div class="page-card">
-                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Nom :</strong> ${p.fullName || "Membre SBC"}</p>
-                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Email :</strong> ${state.currentUser.email}</p>
-                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Pays :</strong> ${p.country || "Bénin"}</p>
-                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Solde disponible :</strong> ${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</p>
-                <p style="font-size:13.5px;margin-bottom:8px;"><strong>Contacts actifs :</strong> ${(p.contactsCount || 0).toLocaleString("fr-FR")}</p>
-                <p style="font-size:13.5px;margin-bottom:14px;"><strong>Code parrain :</strong> ${p.refCode || "-"}</p>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                  <button class="btn-green" onclick="navigateTo('portefeuille')">Lancer un retrait</button>
-                  <button class="btn-secondary" id="logoutBtn">Se déconnecter</button>
-                </div>
+            `
+            <div class="page-card">
+              <p style="font-size:13.5px;margin-bottom:8px;"><strong>Nom :</strong> ${p.fullName || "Membre SBC"}</p>
+              <p style="font-size:13.5px;margin-bottom:8px;"><strong>Email :</strong> ${state.currentUser?.email || ""}</p>
+              <p style="font-size:13.5px;margin-bottom:8px;"><strong>Pays :</strong> ${p.country || "Bénin"}</p>
+              <p style="font-size:13.5px;margin-bottom:8px;"><strong>Solde disponible :</strong> ${(p.walletBalance || 0).toLocaleString("fr-FR")} FCFA</p>
+              <p style="font-size:13.5px;margin-bottom:8px;"><strong>Contacts actifs :</strong> ${(p.contactsCount || 0).toLocaleString("fr-FR")}</p>
+              <p style="font-size:13.5px;margin-bottom:14px;"><strong>Code parrain :</strong> ${p.refCode || "-"}</p>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <button class="btn-green" onclick="navigateTo('portefeuille')">Lancer un retrait</button>
+                <button class="btn-secondary" id="logoutBtn">Se déconnecter</button>
               </div>
-            ` : `
-              <div class="page-card">
-                <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Vous n'êtes pas encore connecté.</p>
-                <button class="btn-primary" id="profLoginBtn">Se connecter / S'inscrire</button>
-              </div>
+            </div>
             `
           );
           break;
@@ -2389,34 +2495,7 @@
         });
       }
 
-      const walletLoginBtn = document.getElementById("walletLoginBtn");
-      if (walletLoginBtn) walletLoginBtn.addEventListener("click", () => openAuthModal("login"));
-
-      // Connexion Admin
-      const adminUnlockForm = document.getElementById("adminUnlockForm");
-      if (adminUnlockForm) {
-        adminUnlockForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const password = document.getElementById("adminCodeInput").value.trim();
-          const btn = document.getElementById("adminUnlockBtn");
-          if (btn) {
-            btn.disabled = true;
-            btn.textContent = "Connexion admin...";
-          }
-          try {
-            await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
-            state.adminUnlocked = true;
-            showToast("Connecté en tant qu'administrateur");
-            await loadAdminData();
-          } catch (err) {
-            showToast("Identifiants admin invalides ou compte admin inexistant");
-            if (btn) {
-              btn.disabled = false;
-              btn.textContent = "Se connecter & ouvrir la Page Admin";
-            }
-          }
-        });
-      }
+      bindAdminUnlockEvent();
 
       const refreshAdminBtn = document.getElementById("refreshAdminBtn");
       if (refreshAdminBtn) {
@@ -2518,12 +2597,6 @@
           });
         });
       }
-
-      const homeAuthBtn = document.getElementById("homeAuthBtn");
-      if (homeAuthBtn) homeAuthBtn.addEventListener("click", () => openAuthModal("register"));
-
-      const profLoginBtn = document.getElementById("profLoginBtn");
-      if (profLoginBtn) profLoginBtn.addEventListener("click", () => openAuthModal("login"));
 
       const logoutBtn = document.getElementById("logoutBtn");
       if (logoutBtn) {
